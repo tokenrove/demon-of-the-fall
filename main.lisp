@@ -1,16 +1,6 @@
 
 (in-package :vgdev-iso-cl)
 
-(defun iso-project-point (x y z)
-  "Project a world coordinate (3D) point onto screen coordinates.
-Returns two values, X and Y in screen coordinates."
-  (let ((sx (+ (ash x -1) (ash z -1)))
-	(sy (+ y (- (ash z -2) (ash x -2)))))
-    (setf sx (round (+ sx (ash (display-width) -1))))
-    (setf sy (round (+ sy (display-height))))
-    (values sx sy)))
-
-
 ;;; example sprite initializer
 (defvar *demo-sprite-alists*
   '((:glen ((:image "pglen1.pcx")
@@ -25,25 +15,35 @@ Returns two values, X and Y in screen coordinates."
 that the display must already have been created."
   (font-init)
   (create-sprite-manager)
+  (create-actor-manager)
+
   (let ((player (make-instance 'actor))
+	(block-actor (make-instance 'actor))
 	(floor-img (load-image "pfloor-1.pcx" t))
 	(fps-count (cons 0 (sdl:get-ticks))))
 
     (load-default-font "Jagged Dreams.ttf" 18)
 
-    (setf (actor-x player) 0)
-    (setf (actor-y player) 0)
-    (setf (actor-z player) 0)
-
+    (setf (actor-position player) (make-iso-point))
+    (setf (actor-handler player) (create-human-input-handler))
     (setf (actor-sprite player)
 	  (new-sprite-from-alist (cadr (assoc :glen *demo-sprite-alists*))))
     (add-sprite-to-list (actor-sprite player))
+    (setf (actor-box player)
+	  (make-box :position (make-iso-point)
+		    :dimensions (make-iso-point :x 24 :y 48 :z 24)))
+    (setf (actor-velocity player) (make-iso-point))
 
-    (let ((block-spr (new-sprite-from-alist (cadr
-					     (assoc :block
-						    *demo-sprite-alists*)))))
-      (update-sprite-coords block-spr 0 0 -64)
-      (add-sprite-to-list block-spr))
+    (setf (actor-position block-actor) (make-iso-point :z -64))
+    (setf (actor-handler block-actor) (lambda (id a) (declare (ignore id a))))
+    (setf (actor-sprite block-actor)
+	  (new-sprite-from-alist (cadr (assoc :block
+					      *demo-sprite-alists*))))
+    (add-sprite-to-list (actor-sprite block-actor))
+    (setf (actor-box block-actor)
+	  (make-box :position (make-iso-point)
+		    :dimensions (make-iso-point :x 64 :y 32 :z 64)))
+    (setf (actor-velocity block-actor) (make-iso-point))
 
     (use-image-palette (sprite-image (actor-sprite player)))
 
@@ -52,7 +52,7 @@ that the display must already have been created."
      (event-update)
      (when (event-pressedp :quit)
        (return))
-     (update-human-input player)
+     (funcall (actor-handler player) 0 player)
 
      ;; Background
      ;; XXX replace with room drawing
@@ -62,15 +62,20 @@ that the display must already have been created."
      ;; Sprites
      ;; XXX replace with sprite engine
      (update-sprite-coords (actor-sprite player)
-			   (actor-x player)
-			   (actor-y player)
-			   (actor-z player))
+			   (actor-position player))
+     (update-sprite-coords (actor-sprite block-actor)
+			   (actor-position block-actor))
      (update-all-sprites)
 
      ;; OSD
-     (paint-string (format nil "Player: (~D, ~D, ~D)" (actor-x player)
-			   (actor-y player) (actor-z player))
-		   10 10 255 255 255)
+     (let* ((b (box-translate (actor-box player) (actor-position player)))
+	    (p (box-position b))
+	    (d (box-dimensions b)))
+       (paint-string (format nil "Player: (~D,~D,~D)(~D,~D,~D) -- collision: ~A"
+			     (iso-point-x p) (iso-point-y p) (iso-point-z p)
+			     (iso-point-x d) (iso-point-y d) (iso-point-z d)
+			     (check-collision player block-actor))
+		     10 10 255 255 255))
      (refresh-display)
 
      (sync-end-frame)

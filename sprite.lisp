@@ -38,12 +38,12 @@
 	  (sprite-priority sprite) 0)
     sprite))
 
-(defun update-sprite-coords (sprite x y z)
+(defun update-sprite-coords (sprite position)
   "Update sprite screen coordinates from world coordinates."
-  (multiple-value-bind (u v) (iso-project-point x y z)
+  (multiple-value-bind (u v) (iso-project-point position)
     (setf (sprite-x sprite) u
 	  (sprite-y sprite) v
-	  (sprite-priority sprite) z)))
+	  (sprite-priority sprite) (iso-point-z position))))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."

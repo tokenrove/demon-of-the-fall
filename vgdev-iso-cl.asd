@@ -11,10 +11,12 @@
      (:file "event" :depends-on ("package"))
      (:file "timer" :depends-on ("package"))
      ;; middle-level
+     (:file "math" :depends-on ("package"))
      (:file "font" :depends-on ("package" "graphics"))
-     (:file "sprite" :depends-on ("package" "graphics"))
+     (:file "sprite" :depends-on ("package" "graphics" "math"))
      ;; high-level logic
-     (:file "actor" :depends-on ("package" "sprite"))
-     (:file "room" :depends-on ("package" "graphics"))
+     (:file "actor" :depends-on ("package" "sprite" "math"))
+     (:file "physics" :depends-on ("actor" "math"))
+     (:file "room" :depends-on ("package" "graphics" "math"))
      (:file "main" :depends-on ("actor" "room" "graphics" "event"
-					"timer" "sprite" "font"))))
+					"timer" "sprite" "font" "math"))))
