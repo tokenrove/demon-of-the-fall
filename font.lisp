@@ -26,7 +26,7 @@
     (sgum:with-foreign-objects ((rect 'sdl:rect))
       (setf (sdl:rect-x rect) x
 	    (sdl:rect-y rect) y)
-      (sdl:blit-surface sface nil *vbuffer* rect))))
+      (sdl:blit-surface sface (make-null-pointer 'sdl:rect) *vbuffer* rect))))
 
 (defun paint-blended-string (string x y r g b)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
@@ -36,7 +36,19 @@
 		  (sdl-ttf:render-text-blended *default-font* string fg))))
       (when sface
 	(blit-image sface nil x (+ y (sdl:surface-h sface)))
-	(sdl:free-surface sface))))))
+	(sdl:free-surface sface)))))
+
+#+nil(defun paint-shaded-string (string x y r g b)
+  "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
+  (with-foreign-objects ((fg 'sdl:color)
+			 (bg 'sdl:color))
+    (setf (sdl:color-r fg) r (sdl:color-g fg) g (sdl:color-b fg) b)
+    (setf (sdl:color-r bg) 0 (sdl:color-g bg) 0 (sdl:color-b bg) 0)
+    (let ((sface (sgum:maybe-null->nil
+		  (sdl-ttf:render-text-shaded *default-font* string fg bg))))
+      (when sface
+	(blit-image sface nil x (+ y (sdl:surface-h sface)))
+	(sdl:free-surface sface)))))
 
 (defun destroy-font ()
   "Frees *DEFAULT-FONT* appropriately."

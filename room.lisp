@@ -144,18 +144,18 @@
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
   (let ((room (make-instance 'room))
-	(archetype (cdr (assoc name *room-set*))))
-    (setf (room-floor room) (cdr (assoc :floor archetype))
-	  (room-exits room) (cdr (assoc :exits archetype))
-	  (room-blocks room) (cdr (assoc :blocks archetype))
-	  (room-name room) (cdr (assoc :name archetype))
+	(archetype (assoc name *room-set*)))
+    (setf (room-floor room) (cdr (assoc :floor (cdr archetype)))
+	  (room-exits room) (cdr (assoc :exits (cdr archetype)))
+	  (room-blocks room) (cdr (assoc :blocks (cdr archetype)))
+	  (room-name room) (cdr (assoc :name (cdr archetype)))
 	  (room-archetype room) archetype
 	  (room-actors room) nil)
     (setf *current-room* room)
     ;; note evals!
     (setf (room-player-spawn room)
-	  (eval (cadr (assoc :player-spawn archetype))))
-    (dolist (actor (cdr (assoc :actors archetype)))
+	  (eval (cadr (assoc :player-spawn (cdr archetype)))))
+    (dolist (actor (cdr (assoc :actors (cdr archetype))))
       (let ((pair (eval actor)))
 	(push (spawn-actor-from-archetype (car pair) (cadr pair))
 	      (room-actors room))))
@@ -170,7 +170,7 @@
     room))
 
 (defun room-width (&optional (room *current-room*))
-  (array-dimension (aref (room-floor room) 0) 0))
+  (array-dimension (room-floor room) 1))
 
 (defun room-depth (&optional (room *current-room*))
   (array-dimension (room-floor room) 0))
@@ -196,20 +196,23 @@
 
 (defun draw-exit (exit ex great)
   (multiple-value-bind (x1 y1)
-      (iso-project-point #I((* +tile-size+ (caar exit)) 0
+      (iso-project-point #I((* +tile-size+ (+ (caar exit)
+					      (if (and ex great) 1 0))) 0
 			    (* +tile-size+ (+ (cdar exit)
 					      (if (and (not ex) great) 1 0)))))
     (multiple-value-bind (x2 y2)
 	(iso-project-point #I((* +tile-size+ (+ (caar exit)
-						(if ex 0 1))) 0
+						(if (and ex (not great)) 0 1)))
+			      0
 			      (* +tile-size+ (+ (cdar exit)
 						(if (or ex great) 1 0)))))
       (multiple-value-bind (x3 y3)
 	  (iso-project-point
 	   #I((+ (* +tile-size+ (caar exit))
-		 (if (and ex (not great))
-		     (- (half +tile-size+))
-		     (half +tile-size+))) 0
+		 (cond ((and ex (not great)) (- (half +tile-size+)))
+		       ((not ex) (half +tile-size+))
+		       (t (+ +tile-size+ (half +tile-size+)))))
+	      0
 	      (+ (* +tile-size+ (cdar exit))
 		 (cond (ex (half +tile-size+))
 		       ((not great) (- (half +tile-size+)))
@@ -230,7 +233,7 @@ paints from back to front."
   ;; Draw order is from bottom-right of the array (furthest away from
   ;; the camera).
   (let* ((floor (room-floor *current-room*))
-	 (h-extent (array-dimension (aref floor 0) 0))
+	 (h-extent (array-dimension floor 1))
 	 (v-extent (array-dimension floor 0))
 	 (h-offs 0) (v-offs 0) (h-max 0) (v-max 0))
 
@@ -258,7 +261,7 @@ paints from back to front."
       ((< z 0))
     (do ((x (1- h-extent) (1- x)))
 	((< x 0))
-      (let ((tile (aref (aref floor z) x)))
+      (let ((tile (aref floor z x)))
 	(when (plusp tile)
 	  (setf (iso-point-x pt) (* +tile-size+ x)
 		(iso-point-y pt) -16

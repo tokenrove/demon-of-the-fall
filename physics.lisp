@@ -131,7 +131,7 @@ actor."
   (when (or (minusp x) (minusp z)
 	    (>= x (room-width))
 	    (>= z (room-depth))
-	    (= (aref (aref (room-floor *current-room*) z) x) 0))
+	    (= (aref (room-floor *current-room*) z x) 0))
     (let ((wall-obj (make-wall-object x z)))
       (when (penetrating-p alice wall-obj)
 	(multiple-value-bind (impulse lsa not-lsa)

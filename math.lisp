@@ -149,9 +149,6 @@ camera positioning."
   (when (> a2 b2) (setf a2 b2))
   (< a1 a2))
 
-(defun extents-overlap-p (amin amax bmin bmax)
-  (and (> amax bmin) (> bmax amin)))
-
 (defun boxes-overlap-p (a b)
   (and (let ((xa (iso-point-x (box-position a)))
 	     (xb (iso-point-x (box-position b))))

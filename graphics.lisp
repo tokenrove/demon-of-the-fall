@@ -21,7 +21,8 @@
 
 (defun create-similar-surface (surface)
   "Convenience function."
-  (let* ((format (sdl:surface-format surface)))
+  (let* ((format (deref-pointer (sdl:surface-format surface)
+				'sdl:pixel-format)))
     (sdl:create-rgb-surface sdl:+swsurface+
 			    (sdl:surface-w surface)
 			    (sdl:surface-h surface)
@@ -53,7 +54,8 @@ option on undebugged code!)."
   t)
 
 (defun new-image-buffer (w h)
-  (let* ((format (sdl:surface-format *vbuffer*))
+  (let* ((format (deref-pointer (sdl:surface-format *vbuffer*)
+				'sdl:pixel-format))
 	 (surface (sdl:create-rgb-surface sdl:+swsurface+
 					  w h
 					  (sdl:pixel-format-bits-per-pixel format)
@@ -83,7 +85,8 @@ deinitialize SDL due to some bad interaction with CMUCL."
 (defun refresh-display ()
   "Flip double buffer, update current display."
   (unless (logtest (sdl:surface-flags *video-surface*) sdl:+doublebuf+)
-    (sdl:blit-surface *vbuffer* nil *video-surface* nil))
+    (sdl:blit-surface *vbuffer* (make-null-pointer 'sdl:rect)
+		      *video-surface* (make-null-pointer 'sdl:rect)))
   (sdl:flip *video-surface*))
 
 (defun display-width () (sdl:surface-w *video-surface*))
@@ -91,10 +94,11 @@ deinitialize SDL due to some bad interaction with CMUCL."
 
 (defun fill-background (color &optional (destination *vbuffer*))
   "Fill the screen with a solid color."
-  (sdl:fill-rect destination nil color))
+  (sdl:fill-rect destination (make-null-pointer 'sdl:rect) color))
 
 (defun rectangle-set (rect x y w h)
   "Convenience function to set an sdl:rect's members in one swoop."
+  (declare (type (#+cmu alien:alien #+sbcl sb-alien:alien (* sdl:rect)) rect))
   (setf (sdl:rect-x rect) x
 	(sdl:rect-y rect) y
 	(sdl:rect-w rect) w
@@ -121,7 +125,8 @@ zero flagged as transparent (when colorkeyp)."
 Sets the current display palette to whatever image is carrying around
 with it."
   (let ((palette (sdl:pixel-format-palette
-		  (sdl:surface-format image))))
+		  (deref-pointer (sdl:surface-format image)
+				 'sdl:pixel-format))))
     (flet ((set-colors (sface)
 	     (sdl:set-colors sface
 			     (get-slot-value palette (:struct-pointer color)
@@ -131,22 +136,23 @@ with it."
       (set-colors *video-surface*)
       (set-colors *vbuffer*))))
 
-(defvar *scratch-rectangle* (sgum:with-foreign-objects ((dst-rect sdl:rect))
-			      dst-rect))
-
 (defun blit-image (img src-rect x y &optional (destination *vbuffer*))
-    "function BLIT-IMAGE image src-rect x y
+  "function BLIT-IMAGE image src-rect x y
 
 Blits the supplied image (with transparency if it's color-keyed) to
 the double buffer, at point (X, Y).  Note that this routine hasn't
 fully stabilized its interface; in particular, the origin point may
 not mean ``from the upper-left corner of the sprite''."
-    (declare (optimize (speed 3) (safety 0) (debug 0)))
   ;;; XXX fix types
-    (rectangle-set *scratch-rectangle* x (- y (if src-rect
-						  (sdl:rect-h src-rect)
-						  (sdl:surface-h img))) 0 0)
-    (sdl:blit-surface img src-rect destination *scratch-rectangle*))
+  (when img
+    (with-foreign-object (dst-rect 'sdl:rect)
+      (rectangle-set dst-rect x (- y (if src-rect
+					 (sdl:rect-h src-rect)
+					 (sdl:surface-h img))) 0 0)
+      (unless src-rect
+	(setf src-rect (make-null-pointer 'sdl:rect)))
+      (sdl:blit-surface img src-rect destination dst-rect))
+      t))
 
 ;;; Y'know, in Double Draggin', I implemented Wu-Rokne-Wyvill line
 ;;; drawing, because I was sick of Bresenham all the time.  After that

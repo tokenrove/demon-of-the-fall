@@ -37,23 +37,23 @@
 (defun wipe-events ()
   (setf *event-map* (bit-xor *event-map* *event-map*)))
 
-(defvar *event-holder* (with-foreign-object (event 'sdl:event) event))
 (defun event-update ()
   "function EVENT-UPDATE
 
 Refresh the state of *EVENT-MAP*."
-  (do ((rv #1=(sdl:poll-event *event-holder*) #1#))
-      ((= rv 0))
-    (let ((type (sdl:event-type *event-holder*)))
-      (cond ((= type sdl:+key-down+)
-	     (awhen (gethash (sdl:event-key-symbol *event-holder*)
-			     *xlate-symbol->map-idx*)
-		    (setf (bit *event-map* it) 1)))
-	    ((= type sdl:+key-up+)
-	     (awhen (gethash (sdl:event-key-symbol *event-holder*)
-				 *xlate-symbol->map-idx*)
-	      (setf (bit *event-map* it) 0)))))))
-
+  (with-foreign-object (event 'sdl:event)
+    (do ((rv #1=(sdl:poll-event event) #1#))
+	((= rv 0))
+      (let ((type (sdl:event-type event)))
+	(cond ((= type sdl:+key-down+)
+	       (awhen (gethash (sdl:event-key-symbol event)
+			       *xlate-symbol->map-idx*)
+		      (setf (bit *event-map* it) 1)))
+	      ((= type sdl:+key-up+)
+	       (awhen (gethash (sdl:event-key-symbol event)
+			       *xlate-symbol->map-idx*)
+		      (setf (bit *event-map* it) 0))))))))
+  
 (defun event-pressedp (ev)
   "Returns true if the given button is pressed."
   (= (bit *event-map* ev) 1))
