@@ -1,5 +1,5 @@
 
-(in-package :vgdev-iso-cl)
+(in-package :demon-of-the-fall)
 
 (let ((debug-expression (make-array '(40) :element-type 'base-char
 				    :fill-pointer t)))

@@ -7,7 +7,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :vgdev-iso-cl)
+(in-package :demon-of-the-fall)
 
 (defparameter *maze-array* #(#(0 1 0 1 0 1 0 1 0 1 0 1 0 1 0)
 			     #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)

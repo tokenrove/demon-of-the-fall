@@ -5,7 +5,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :vgdev-iso-cl)
+(in-package :demon-of-the-fall)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +ev-quit+ 0)

@@ -16,12 +16,20 @@ Status of support for various lisp implementations:
 but pretty horrible for debugging.  Should work fine for normal use,
 though.
 
-* SBCL on Linux/PPC -- one of my standard development platforms.
-Wretched GC pauses.
-
 * CMUCL on Linux/x86 -- lots of GC pauses at the moment, but should be
 the most stable, as it is the platform on which most development is
 done.
+
+* SBCL on Linux/PPC -- one of my standard development platforms.
+Wretched GC pauses.
+
+* SBCL on Linux/x86 -- strangely, much more recalcitrant than SBCL on
+PPC.  I have to get around to fixing the FFI issues with this before
+it will be usable.
+
+* CLISP on Linux/{x86,PPC}, hopefully also Win32 -- once I figure out
+the FFI here, I will try to have this running; currently it's a no-go
+due to lack of UFFI support.
 
 
 

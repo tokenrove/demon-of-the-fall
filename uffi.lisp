@@ -1,13 +1,12 @@
-(in-package :vgdev-iso-cl)
+(in-package :demon-of-the-fall)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; XXX eventually needs to figure out how to find the data.
   (assert
-   (load-foreign-library (merge-pathnames "low-level.so"
-					 (osicat:current-directory))
-			:module "low-level"
-			:supporting-libraries '("c")
-			:force-load t)))
+   (load-foreign-library "./low-level.so"
+			 :module "low-level"
+			 :supporting-libraries '("c")
+			 :force-load t)))
 
 (defun maybe-null->nil (ptr)
   "Convenience function -- if the supplied pointer is NULL, returns

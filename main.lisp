@@ -4,7 +4,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :vgdev-iso-cl)
+(in-package :demon-of-the-fall)
 
 (defvar *camera* (cons 100 140))
 (defvar *camera-follow*)
