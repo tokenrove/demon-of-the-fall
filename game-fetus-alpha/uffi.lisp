@@ -1,4 +1,8 @@
-(in-package :demon-of-the-fall)
+;;; FFI for a simple game toolkit.
+;;;
+;;; Julian Squires <tek@wiw.org> / 2004
+
+(in-package :game-fetus-alpha)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; XXX eventually needs to figure out how to find the data.
@@ -145,13 +149,11 @@ NIL.  Returns the pointer itself otherwise."
 
 ;;;; TIMER
 
-(declaim (inline timer-get-ticks))
+(declaim (inline timer-get-ticks timer-start-frame timer-end-frame))
 (def-function "timer_get_ticks" () :module "low-level"
 	      :returning :unsigned-long)
-(declaim (inline timer-start-frame))
 (def-function "timer_start_frame" ((frame-length :int))
   :module "low-level" :returning :void)
-(declaim (inline timer-end-frame))
 (def-function "timer_end_frame" () :module "low-level" :returning :int)
 
 ;;;; FONT

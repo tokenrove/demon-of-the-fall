@@ -6,7 +6,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :game-fetus-alpha)
 
 (defparameter *desired-width* 320)
 (defparameter *desired-height* 240)

@@ -1,4 +1,5 @@
-;;; actor.lisp -- Actor management code for Equinox-ish demo.
+;;; actor.lisp -- Actor management code for Aequus Noctis (engine for
+;;; Demon of the Fall).
 ;;;
 ;;; Defines the actor class, deals with global actor list, actor
 ;;; handlers, et cetera.
@@ -7,7 +8,7 @@
 ;;;
 
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
 
 ;;;; Actors
 
@@ -65,8 +66,8 @@ Remove the actor specified by id from the actor manager."
 many parameters of an actor.")
 
 
-(defun spawn-actor-from-archetype (name position)
-  "function SPAWN-ACTOR-FROM-ARCHETYPE name position => actor
+(defun spawn-actor-from-archetype (name position sprite-manager)
+  "function SPAWN-ACTOR-FROM-ARCHETYPE name position sprite-manager => actor
 
 Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
@@ -79,9 +80,9 @@ values from *ACTOR-ARCHETYPES*."
 	  (actor-handler actor) (funcall (cadr (assoc :handler archetype)))
 	  (actor-contact-surface actor) nil
 	  (actor-facing actor) :east
-	  (actor-sprite actor) (new-sprite-from-alist
+	  (actor-sprite actor) (fetus:new-sprite-from-alist
 				(cdr (assoc :sprite archetype))))
-    (add-sprite-to-list (actor-sprite actor))
+    (fetus:add-sprite-to-manager sprite-manager (actor-sprite actor))
     (destructuring-bind ((x y z) (w h d)) (cdr (assoc :box archetype))
       (setf (actor-box actor)
 	    (make-box :position (make-iso-point :x x :y y :z z)
@@ -117,9 +118,11 @@ with the actor manager."
 (defun update-sprite-coords (sprite position actor)
   "Update sprite screen coordinates from world coordinates."
   (multiple-value-bind (u v) (iso-project-point position)
-    (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
-	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
-    (setf (sprite-priority sprite) actor)))
+    (incf u (car *camera*))
+    (incf v (cdr *camera*))
+    (setf (fetus:sprite-x sprite) (- u (car (fetus:sprite-blit-offset sprite)))
+	  (fetus:sprite-y sprite) (- v (cdr (fetus:sprite-blit-offset sprite))))
+    (setf (fetus:sprite-priority sprite) actor)))
 
 
 (defun isometric-sprite-cmp (a b)
@@ -139,6 +142,26 @@ with the actor manager."
 		(iso-point-y (actor-position b)))
 	    (>= #3# #4#))
 	(>= #1# #2#))))
+
+
+(defun check-room-change (sprite-manager)
+  (when (plusp *exit-counter*) (decf *exit-counter*))
+  (when (and *magic-exit-hack* (zerop *exit-counter*))
+    (let ((old-y (iso-point-y (actor-position *camera-follow*))))
+      (create-actor-manager)
+      (load-room sprite-manager (car *magic-exit-hack*))
+      (setf *camera-follow*
+	    (spawn-actor-from-archetype :peter
+					#I((* (caadr *magic-exit-hack*)
+					      +tile-size+)
+					   old-y
+					   (* (cdadr *magic-exit-hack*)
+					      +tile-size+))
+					sprite-manager))
+      (setf *exit-counter* 61)
+      (setf *magic-exit-hack* nil))
+    t))
+
 
 ;;;; Handlers
 
@@ -166,19 +189,19 @@ with the actor manager."
 events."
   (lambda (id player)
     (declare (ignore id))
-    (when (event-pressedp +ev-up+)
+    (when (fetus:event-pressedp +ev-up+)
       (apply-impulse player :x 0.5)
-      (set-sprite-animation (actor-sprite player) :walk-north))
-    (when (event-pressedp +ev-down+)
+      (fetus:set-sprite-animation (actor-sprite player) :walk-north))
+    (when (fetus:event-pressedp +ev-down+)
       (apply-impulse player :x -0.5)
-      (set-sprite-animation (actor-sprite player) :walk-south))
-    (when (event-pressedp +ev-left+)
+      (fetus:set-sprite-animation (actor-sprite player) :walk-south))
+    (when (fetus:event-pressedp +ev-left+)
       (apply-impulse player :z 0.5)
-      (set-sprite-animation (actor-sprite player) :walk-west))
-    (when (event-pressedp +ev-right+)
+      (fetus:set-sprite-animation (actor-sprite player) :walk-west))
+    (when (fetus:event-pressedp +ev-right+)
       (apply-impulse player :z -0.5)
-      (set-sprite-animation (actor-sprite player) :walk-east))
-    (when (and (event-pressedp +ev-button-a+)
+      (fetus:set-sprite-animation (actor-sprite player) :walk-east))
+    (when (and (fetus:event-pressedp +ev-button-a+)
 	       (actor-contact-surface player))
       (apply-impulse player :y 6))))
 
@@ -211,4 +234,3 @@ events."
   (declare (ignore us them face impulse))
   ;; if we're touching the player, they can have us.
   )
-

@@ -1,5 +1,11 @@
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
+
+(defvar *camera* (cons 100 140))
+(defvar *camera-follow*)
+(defvar *magic-exit-hack* nil)
+(defvar *exit-counter* 0)
+
 
 (defun debugging-line-draw (point-1 point-2 origin)
   (multiple-value-bind (x1 y1)
@@ -14,7 +20,7 @@
       (incf y2 (cdr *camera*))
       (when (minusp x2) (setf x2 0))
       (when (minusp y2) (setf y2 0))
-      (draw-line x1 y1 x2 y2 255))))
+      (fetus:draw-line x1 y1 x2 y2 255))))
 
 (defun draw-bottom-cursor (box)
   (let* ((x (iso-point-x (box-dimensions box)))
@@ -91,32 +97,3 @@
     (debugging-line-draw #i(0 y 0) #i(0 0 0) pos)
     (debugging-line-draw #i(0 0 0) #i(0 0 z) pos)))
 
-
-#+nil(defun draw-triangle (xs ys lr lg lb fr fg fb)
-  (let ((cover 0))
-    (maplist (lambda (x)
-	       (incf (car x) (car *camera*))
-	       (when (minusp (car x))
-		 (setf (car x) 0)
-		 (incf cover))
-	       (when (> (car x) (1- (display-width)))
-		 (setf (car x) (1- (display-width)))
-		 (incf cover)))
-	     xs)
-    (maplist (lambda (y)
-	       (incf (car y) (cdr *camera*))
-	       (when (minusp (car y))
-		 (setf (car y) 0)
-		 (incf cover))
-	       (when (> (car y) (1- (display-height)))
-		 (setf (car y) (1- (display-height)))
-		 (incf cover)))
-	     ys)
-
-    (unless (> cover 2)
-      #+nil(draw-filled-triangle *vbuffer* (first xs) (first ys)
-				 (second xs) (second ys) (third xs) (third ys)
-				 fr fg fb)
-      #+nil(draw-triangle *vbuffer* (first xs) (first ys)
-			  (second xs) (second ys) (third xs) (third ys)
-			  lr lg lb))))

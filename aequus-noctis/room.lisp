@@ -1,12 +1,10 @@
 ;;;
-;;; room.lisp -- Room management for Equinox-ish demo.
-;;;
-;;; Just floor drawing routines at the moment.
+;;; room.lisp -- Room management for Equinox-ish games.
 ;;;
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
 
 (defconstant +tile-size+ 64)
 
@@ -128,7 +126,6 @@
       (setf (aref *tiles* i) tile))))
 
 
-
 (defun initialize-room-data (&optional (rooms-file "rooms.sexp"))
   (with-open-file (stream rooms-file)
     (setf *room-set* (read stream))))
@@ -142,7 +139,7 @@
    (name :accessor room-name)
    (player-spawn :accessor room-player-spawn)))
 
-(defun load-room (name &key (spawn-actors-p t))
+(defun load-room (name sprite-manager &key (spawn-actors-p t))
   (setf *wall-objects* (make-hash-table)
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
@@ -160,7 +157,8 @@
     (when spawn-actors-p
       (dolist (actor (cdr (assoc :actors (cdr archetype))))
 	(push (spawn-actor-from-archetype (first actor)
-					  (iso-point-from-list (second actor)))
+					  (iso-point-from-list (second actor))
+					  sprite-manager)
 	      (room-actors room))))
     ;; XXX deal with physics constants here.
     (use-image-palette (tile-image (aref *tiles* 1)))
@@ -168,7 +166,7 @@
     (paint-floor)
     (setf *room-block-actors* (make-hash-table :test 'equal))
     (dolist (block (room-blocks room))
-      (give-block-sprite block))
+      (give-block-sprite block sprite-manager))
     room))
 
 (defun room-width (&optional (room *current-room*))
@@ -193,7 +191,15 @@
       (when (= (caar exit) (1- (room-width)))
 	(draw-exit exit t t))
       (when (= (cdar exit) (1- (room-depth)))
-	(draw-exit exit nil t)))))
+	(draw-exit exit nil t))))
+  ;; update sprites
+  (maphash (lambda (key actor)
+	     (declare (ignore key))
+	     (update-sprite-coords
+	      (actor-sprite actor)
+	      (actor-position actor)
+	      actor))
+	   *room-block-actors*))
 
 
 ;; Draws triangles.  These could be more efficiently drawn as sprites,
@@ -344,11 +350,11 @@ paints from back to front."
 
 (defvar *room-block-actors*)
 
-(defun give-block-sprite (block)
+(defun give-block-sprite (block sprite-manager)
   (let* ((arch (cdr (tile-archetype (aref *tiles* (first block)))))
 	 (actor (make-slice-object arch (second block)
 				   (third block) (fourth block)))
-	 (sprite (new-sprite-from-alist (cdr (assoc :sprite arch)))))
+	 (sprite (fetus:new-sprite-from-alist (cdr (assoc :sprite arch)))))
     (update-sprite-coords
      sprite
      (make-iso-point :x (* (second block) +tile-size+)
@@ -356,7 +362,7 @@ paints from back to front."
 		     :z (* (fourth block) +tile-size+))
      actor)
     (setf (actor-sprite actor) sprite)
-    (add-sprite-to-list sprite)
+    (fetus:add-sprite-to-manager sprite-manager sprite)
     (setf (gethash (cdr block) *room-block-actors*) actor)))
 
 (defun make-slice-object (archetype x y z)

@@ -7,7 +7,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :game-fetus-alpha)
 
 (defvar *default-font* nil
   "The font used by PAINT-STRING, loaded via LOAD-DEFAULT-FONT.")

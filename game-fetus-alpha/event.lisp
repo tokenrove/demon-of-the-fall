@@ -5,7 +5,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :game-fetus-alpha)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +ev-quit+ 0)
@@ -118,3 +118,12 @@ Refresh the state of *EVENT-MAP*."
 (defun event-pressedp (ev)
   "Returns true if the given button is pressed."
   (= (bit *event-map* ev) 1))
+
+
+(defun get-key-event ()
+  (with-foreign-object (event 'll-event)
+    (do ((rv #1=(ll-wait-event event) #1#))
+	((= rv 0))
+      (let ((type (event-type event)))
+	(cond ((= type +ll-event-key-down+)
+	       (return (event-value event))))))))

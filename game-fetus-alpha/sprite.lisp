@@ -1,14 +1,10 @@
 ;;;
 ;;; sprite.lisp -- Simple sprite management routines.
 ;;;
-;;; The interface is here to provide animation facilities, but they're
-;;; currently unimplemented as I don't have any art to make use of
-;;; them.
-;;;
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :game-fetus-alpha)
 
 ;;;; General Sprites
 
@@ -50,14 +46,11 @@ priority and screen position."))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."
-  ;; XXX incomplete, should parse animations
   ;; get current frame
   (let ((flist (cdr (assoc (sprite-cur-anim sprite)
 			   (sprite-animations sprite))))
 	(u (sprite-x sprite))
 	(v (sprite-y sprite)))
-    (incf u (car *camera*))
-    (incf v (cdr *camera*))
     (blit-image (sprite-image sprite) u v
 		:src-rect (nth (car (nth (sprite-cur-frame sprite)
 					 flist))
@@ -80,28 +73,36 @@ priority and screen position."))
 
 ;;;; Sprite Manager
 
-(defvar *global-sprite-list*)
+(defclass sprite-manager ()
+  ((sprites :accessor sprite-manager-sprites)
+   (sort-fn :accessor sprite-manager-sort-fn)))
 
-(defun create-sprite-manager ()
-  (setf *global-sprite-list* nil))
+(defun create-sprite-manager (sort-fn)
+  (let ((manager (make-instance 'sprite-manager)))
+    (setf (sprite-manager-sprites manager) nil)
+    (setf (sprite-manager-sort-fn manager) sort-fn)
+    manager))
 
-(defun destroy-sprite-manager ()
-  #+nil(loop for sprite in *global-sprite-list*
-	do (format t "~&Destroy sprite with image ~A." (sprite-image sprite))))
+(defun destroy-sprite-manager (manager)
+  (dolist (sprite (sprite-manager-sprites manager))
+    (awhen (sprite-image sprite)
+      (free-image it))
+    (setf (sprite-image sprite) nil)))
 
-(defun add-sprite-to-list (sprite)
-  (push sprite *global-sprite-list*))
+(defun add-sprite-to-manager (manager sprite)
+  (push sprite (sprite-manager-sprites manager)))
 
-(defun remove-sprite (sprite)
-  (setf *global-sprite-list* (remove sprite *global-sprite-list*)))
+(defun remove-sprite-from-manager (manager sprite)
+  (setf (sprite-manager-sprites manager)
+	(remove sprite (sprite-manager-sprites manager))))
 
-(defun update-all-sprites ()
+(defun update-all-sprites (manager)
   ;; XXX could be a lot more efficient if we cared.
-  (setf *global-sprite-list*
+  (setf (sprite-manager-sprites manager)
 	(stable-sort
-	 *global-sprite-list*
-	 #'isometric-sprite-cmp
+	 (sprite-manager-sprites manager)
+	 (sprite-manager-sort-fn manager)
 	 :key #'sprite-priority))
 
-  (loop for sprite in *global-sprite-list*
-	do (draw-sprite sprite)))
+  (dolist (sprite (sprite-manager-sprites manager))
+    (draw-sprite sprite)))

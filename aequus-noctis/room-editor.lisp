@@ -1,5 +1,15 @@
+;;;
+;;; Generic extensible isometric room editor.
+;;;
+;;; Will soon be split up to be a bit more generic, with
+;;; scenario-specific hooks in demon-of-the-fall.  And fundamental
+;;; editing components in game-fetus-alpha.
+;;;
+;;; Julian Squires <tek@wiw.org> / 2004
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
+
+(defvar *sprite-manager* nil)
 
 ;;;; EDITING COMPONENTS
 
@@ -28,7 +38,7 @@ cursor point, NIL otherwise."
 	 (archblocks (assoc :blocks (cdr (room-archetype *current-room*)))))
     (when actor
       (remhash point-list *room-block-actors*)
-      (remove-sprite (actor-sprite actor))
+      (fetus:remove-sprite-from-manager *sprite-manager* (actor-sprite actor))
       (setf (cdr archblocks)
 	    (delete-if #'(lambda (x) (equal point-list (cdr x)))
 		       (cdr archblocks)))
@@ -55,7 +65,7 @@ cursor point, NIL otherwise."
 	  (setf archblocks (assoc :blocks
 				  (cdr (room-archetype *current-room*))))))
     (setf (room-blocks *current-room*) (cdr archblocks))
-    (give-block-sprite block)
+    (give-block-sprite block *sprite-manager*)
     t))
 
 
@@ -64,10 +74,10 @@ cursor point, NIL otherwise."
 (defun room-editor (room-to-edit)
   "Interactive level editor on the current display, affecting the
 given ROOM.  Note that the display must already have been created."
-  (font-init)
-  (load-default-font "other-data/pph.ttf" 18)
+  (fetus:font-init)
+  (fetus:load-default-font "other-data/pph.ttf" 18)
   (initialize-tiles)
-  (create-sprite-manager)
+  (setf *sprite-manager* (fetus:create-sprite-manager))
   (load-room room-to-edit :spawn-actors-p nil)
 
   (do ((entry-mode :blocks)
@@ -133,8 +143,8 @@ given ROOM.  Note that the display must already have been created."
 	     (room-editor-help))
 	    ((= event (char-code #\c))
 	     (let ((dest-room (change-rooms-dialog room-to-edit)))
-	       (destroy-sprite-manager)
-	       (create-sprite-manager)
+	       (fetus:destroy-sprite-manager *sprite-manager*)
+	       (setf *sprite-manager* (fetus:create-sprite-manager))
 	       (load-room dest-room :spawn-actors-p nil)
 	       (editor-osd-display-message "Change to room ~A."
 					   dest-room)))
@@ -201,8 +211,8 @@ given ROOM.  Note that the display must already have been created."
       (when dirty-floor-p
 	(paint-floor)
 	(setf dirty-floor-p nil))
-      (room-redraw)
-      (update-all-sprites)
+    (room-redraw)
+    (fetus:update-all-sprites *sprite-manager*)
 
       (dolist (spawn (cdr (assoc :actors
 				 (cdr (room-archetype *current-room*)))))
@@ -240,30 +250,30 @@ given ROOM.  Note that the display must already have been created."
 				40 40 80))
       (refresh-display))
   
-  (destroy-font)
-  (destroy-sprite-manager))
+  (fetus:destroy-font)
+  (fetus:destroy-sprite-manager *sprite-manager*))
 
 (defun palette-mode (set image-fn name-fn)
   (do ((cursor (cons 0 0))
        (max-row (/ (length set) 3))
        (max-column 3))
       (nil)
-    (fill-background 255)
+    (fetus:fill-background 255)
     (dotimes (y max-row)
       (dotimes (x max-column)
 	(when (< (+ x (* y max-column)) (length set))
 	  (awhen (funcall image-fn (elt set (+ x (* y max-column))))
-		 (blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
-	  (paint-string (funcall name-fn
-				 (elt set
-				      (+ x (* y max-column))))
-			(+ 10 (* 104 x)) (+ 60 (* 70 y)) 220 220 255))))
-    (draw-rectangle (+ 8 (* 104 (car cursor)))
-		    (+ 10 (* 70 (cdr cursor)))
-		    84 64 63)
-    (refresh-display)
+		 (fetus:blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
+	  (fetus:paint-string (funcall name-fn
+				       (elt set
+					    (+ x (* y max-column))))
+			      (+ 10 (* 104 x)) (+ 60 (* 70 y)) 220 220 255))))
+    (fetus:draw-rectangle (+ 8 (* 104 (car cursor)))
+			  (+ 10 (* 70 (cdr cursor)))
+			  84 64 63)
+    (fetus:refresh-display)
 
-    (let ((event (get-key-event)))
+    (let ((event (fetus:get-key-event)))
       ;; mode events; please excuse the silly hardcoded SDL keysyms.
       (cond ((= event 13) (return (+ (car cursor)
 				     (* (cdr cursor) max-column))))
@@ -285,7 +295,7 @@ given ROOM.  Note that the display must already have been created."
 		    "Don't worry.  This help will be improved soon."
 		    nil
 		    "c => change rooms;"
-		    "a/s => actor/sprite mode;"
+		    "a/s => actor/slice mode;"
 		    "+/- => cursor higher/lower;"
 		    "r/w => read/write data to disk;"
 		    "p => palette; e => edit exits;"
@@ -294,7 +304,7 @@ given ROOM.  Note that the display must already have been created."
 		    "(Please read the README, too!)"
 		    (200 "Have fun!"))))
       (nil)
-    (fill-background 1)
+    (fetus:fill-background 1)
     (do ((i 0 (1+ i))
 	 (list help-text (cdr list)))
 	((null list))
@@ -303,9 +313,9 @@ given ROOM.  Note that the display must already have been created."
 	      (if (consp it) (cadr it) it)
 	      (if (consp it) (car it) 10)
 	      (+ 4 (* i 19)) 255 255 255)))
-    (refresh-display)
+    (fetus:refresh-display)
 
-    (let ((event (get-key-event)))
+    (let ((event (fetus:get-key-event)))
       ;; mode events; please excuse the silly hardcoded SDL keysyms.
       (cond ((= event 13) (return))
 	    ((= event 273) (when (plusp (cdr cursor)) (decf (cdr cursor))))
@@ -319,8 +329,9 @@ given ROOM.  Note that the display must already have been created."
   (do ((cursor 0)
        (max-row (length (room-exits *current-room*))))
       (nil)
-    (draw-filled-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
-			   128) ;(gfx-map-rgb 128 128 128)
+    (fetus:draw-filled-rectangle 8 8 (- (fetus:display-width) 16)
+				 (- (fetus:display-height) 32)
+				 128) ;(gfx-map-rgb 128 128 128)
     (draw-rectangle 8 8 (- (display-width) 16)
 		    (- (display-height) 32) 32) ;(gfx-map-rgb 32 32 32)
     (draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (display-width) 19) 20
@@ -405,7 +416,7 @@ given ROOM.  Note that the display must already have been created."
 		  12 190 240 200 200)
     (refresh-display)
 
-    (let ((event (get-key-event)))
+    (let ((event (fetus:get-key-event)))
       ;; mode events; please excuse the silly hardcoded SDL keysyms.
       (cond ((= event 13) (return (car (nth cursor *room-set*))))
 	    ((= event 273) (when (plusp cursor) (decf cursor)))
@@ -430,19 +441,11 @@ given ROOM.  Note that the display must already have been created."
 
 (defvar *editor-osd-message* nil)
 
-(defun get-key-event ()
-  (with-foreign-object (event 'll-event)
-    (do ((rv #1=(ll-wait-event event) #1#))
-	((= rv 0))
-      (let ((type (event-type event)))
-	(cond ((= type +ll-event-key-down+)
-	       (return (event-value event))))))))
-
 (defun editor-yes-no-prompt (message)
   (loop
-   (draw-status-message message 128 128 128)
-   (refresh-display)
-   (let ((event (get-key-event)))
+     (draw-status-message message 128 128 128)
+     (fetus:refresh-display)
+   (let ((event (fetus:get-key-event)))
      (cond ((= event (char-code #\y)) (return t))
 	   ((= event (char-code #\n)) (return nil))))))
 

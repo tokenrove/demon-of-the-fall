@@ -8,7 +8,7 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
 
 ;;;; Generic
 

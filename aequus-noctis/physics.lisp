@@ -1,13 +1,12 @@
 ;;;
 ;;; physics.lisp -- Physics routines.
 ;;;
-;;; Totally fucked at the moment.  Needs to be reworked to deal with
-;;; arbitrary frame timings.
+;;; A crude hack, but it should work for Equinox-ish games.
 ;;;
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-(in-package :demon-of-the-fall)
+(in-package :aequus-noctis)
 
 ;;; XXX Each of these constants is totally arbitrary.
 (defparameter *air-friction* 0.25
