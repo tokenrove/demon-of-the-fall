@@ -51,6 +51,10 @@
 	  :z (third vals))))
 (set-dispatch-macro-character #\# #\I #'|#I-reader|)
 
+(defmethod print-object ((point iso-point) stream)
+  (format stream "#I(~A ~A ~A)" (iso-point-x point)
+	  (iso-point-y point) (iso-point-z point)))
+
 (defun iso-point-component-function-of (axis)
   (let ((f (cond ((eql axis :x) #'iso-point-x)
 		 ((eql axis :y) #'iso-point-y)
@@ -78,11 +82,12 @@
   "Project a world coordinate (3D) point onto screen coordinates.
 Returns two values, X and Y in screen coordinates.  This is *before*
 camera positioning."
-  (let ((sx (+ (half (iso-point-x p)) (half (iso-point-z p))))
-	(sy (+ (iso-point-y p)
-	       (- (quarter (iso-point-z p))
-		  (quarter (iso-point-x p))))))
-    (incf sy (half (display-height)))
+  (let ((sx (- (half (iso-point-x p)) (half (iso-point-z p))))
+	(sy (- (half (display-height))
+	       (+ (iso-point-y p)
+		  (quarter (iso-point-x p))
+		  (quarter (iso-point-z p))))))
+;    (decf sy (half (display-height)))
     (values (round sx) (round sy))))
 
 ;;; XXX this and the following functions should have non-consing
@@ -97,6 +102,16 @@ camera positioning."
   (make-box
    :position (iso-point-translate (box-position box) point) 
    :dimensions (box-dimensions box)))
+
+(defun translatef (object origin)
+  (etypecase object
+    (iso-point (incf (iso-point-x object) (iso-point-x origin))
+	       (incf (iso-point-y object) (iso-point-y origin))
+	       (incf (iso-point-z object) (iso-point-z origin)))
+    (box (dolist (axis '(:x :y :z))
+	   (incf (iso-point-component axis (box-position object))
+		 (iso-point-component axis origin)))))
+  object)
 
 
 (defun extents-penetrate-p (a1 a2 b1 b2)

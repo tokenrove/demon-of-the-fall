@@ -18,9 +18,26 @@
 	       (declare (ignore id))
 	       (draw-front-of-actor-box actor))
 	   *actor-map*)
+
+  (multiple-value-bind (x y)
+      (iso-project-point (actor-position (gethash 0 *actor-map*)))
+    (incf x (car *camera*))
+    (incf y (cdr *camera*))
+    (sdl:draw-line *vbuffer* x y x y 255 10 10))
+
+  (multiple-value-bind (x y)
+      (iso-project-point (iso-point-translate
+			  #I(0 36 0)
+			  (actor-position (gethash 0 *actor-map*))))
+    (incf x (car *camera*))
+    (incf y (cdr *camera*))
+    (sdl:draw-line *vbuffer* x y x y 255 10 10))
+
+
   (refresh-display))
 
 (defvar *debug-projections* nil)
+(defvar *camera* (cons 100 140))
 
 (defun demo-loop ()
   "Do a little interactive demo-loop on the current display.  Note
@@ -54,8 +71,7 @@ that the display must already have been created."
      (update-all-actors 20)
      (update-all-sprites)
 
-     ;; OSD
-     (paint-string "Equinox-ish..." 10 10 255 255 255)
+     (paint-osd)
      (refresh-display)
 
      (sync-end-frame)

@@ -15,7 +15,7 @@
 
 ;;;; FLOORS
 
-#+nil(defvar *default-floor*
+(defvar *default-floor*
   #(#(0 0 0 1 0 0 0)
     #(0 0 1 1 1 0 0)
     #(0 1 1 1 1 1 0)
@@ -26,7 +26,7 @@
     #(0 0 1 1 1 0 0)
     #(0 0 1 1 1 0 0)))
 
-(defvar *default-floor*
+#+nil(defvar *default-floor*
   #(#(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
     #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
     #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
@@ -51,8 +51,8 @@ to front."
   ;; the camera).
   (let ((h-extent (array-dimension (aref floor-slice 0) 0))
 	(v-extent (array-dimension floor-slice 0)))
-    (do ((z 0 (1+ z)))
-	((>= z v-extent))
+    (do ((z (1- v-extent) (1- z)))
+	((< z 0))
       (do ((x (1- h-extent) (1- x)))
 	  ((< x 0))
 	(let ((tile (aref (aref floor-slice z) x)))
@@ -61,6 +61,8 @@ to front."
 		(iso-project-point (make-iso-point :x (* +tile-size+ x)
 						   :y 0
 						   :z (* +tile-size+ z)))
+	      (incf u (car *camera*))
+	      (incf v (cdr *camera*))
 	      (blit-image floor-img nil u v))))))))
 
 

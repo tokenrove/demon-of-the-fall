@@ -59,7 +59,7 @@ Remove the actor specified by id from the actor manager."
   '((:glen 
      (:sprite
       (:image "ret-data/petsheet.pcx")
-      (:blit-offset 8)
+      (:blit-offset (12 . 0))
       (:frames ((0 0 24 48)
 		(24 0 24 48)
 		(48 0 24 48)
@@ -90,7 +90,7 @@ Remove the actor specified by id from the actor manager."
     (:push-block
      (:sprite
       (:image "ret-data/block.pcx")
-      (:blit-offset 16)
+      (:blit-offset (32 . 0))
       (:frames ((0 0 64 64)))
       (:animations ((:default (0 . 60)))))
      (:handler
@@ -103,7 +103,7 @@ Remove the actor specified by id from the actor manager."
     (:float-block
      (:sprite
       (:image "ret-data/bl-cushi.pcx")
-      (:blit-offset 16)
+      (:blit-offset (32 . 0))
       (:frames ((0 0 64 64)))
       (:animations ((:default (0 . 60)))))
      (:handler
@@ -116,7 +116,7 @@ Remove the actor specified by id from the actor manager."
     (:floor-block
      (:sprite
       (:image "ret-data/fl-check.pcx")
-      (:blit-offset 16)
+      (:blit-offset (32 . 0))
       (:frames ((0 0 64 40)))
       (:animations ((:default (0 . 60)))))
      (:handler
@@ -176,7 +176,8 @@ with the actor manager."
 	     ;; XXX update contact handlers
 	     ;; XXX camera
 	     (update-sprite-coords (actor-sprite actor)
-				   (actor-position actor))
+				   (actor-position actor)
+				   (actor-box actor))
 	     (funcall (actor-handler actor) id actor))
 	   *actor-map*))
 
@@ -192,13 +193,15 @@ with the actor manager."
   (let ((direction :up))
     (lambda (id actor)
       (declare (ignore id))
+      (when (actor-contact-surface actor)
+	(setf direction :up))
       (if (eql direction :up)
-	  (if (> (iso-point-y (actor-position actor)) -42)
+	  (if (< (iso-point-y (actor-position actor)) 42)
 	      ;(apply-impulse actor :y -0.2)
-	      (setf (iso-point-y (actor-velocity actor)) -0.2)
-	      (setf direction :down))
-	  (if (< (iso-point-y (actor-position actor)) 0)
 	      (setf (iso-point-y (actor-velocity actor)) 0.2)
+	      (setf direction :down))
+	  (if (> (iso-point-y (actor-position actor)) 0)
+	      (setf (iso-point-y (actor-velocity actor)) -0.2)
 	      (setf direction :up))))))
 
 (defun create-human-input-handler ()
@@ -207,17 +210,17 @@ events."
   (lambda (id player)
     (declare (ignore id))
     (when (event-pressedp :up)
-      (apply-impulse player :z -0.5))
-    (when (event-pressedp :down)
-      (apply-impulse player :z 0.5)
-      (set-sprite-animation (actor-sprite player) :walk-east))
-    (when (event-pressedp :left)
-      (apply-impulse player :x -0.5))
-    (when (event-pressedp :right)
       (apply-impulse player :x 0.5)
       (set-sprite-animation (actor-sprite player) :walk-north))
+    (when (event-pressedp :down)
+      (apply-impulse player :x -0.5))
+    (when (event-pressedp :left)
+      (apply-impulse player :z 0.5))
+    (when (event-pressedp :right)
+      (apply-impulse player :z -0.5)
+      (set-sprite-animation (actor-sprite player) :walk-east))
     (when (event-pressedp :jump)
-      (apply-impulse player :y -1.4))))
+      (apply-impulse player :y 1.4))))
 
 
 (defun pushable-block-handler (face impulse actor)

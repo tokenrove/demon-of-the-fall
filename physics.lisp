@@ -15,7 +15,7 @@
 (defparameter *ground-friction* 0.25
   "Friction on the floor.  Note that this parameter will not be here
 forever as friction becomes delegated to surfaces.")
-(defparameter *gravity* 1.5
+(defparameter *gravity* -1.5
   "Gravity affecting actors.")
 
 (defun update-physics (a)
@@ -27,7 +27,10 @@ actor."
 
   (detect-collisions a)
   ;;; call contact handlers:
-  (if (actor-contact-surface a)
+  (sinkf (iso-point-x (actor-velocity a)) *ground-friction*)
+  (sinkf (iso-point-z (actor-velocity a)) *ground-friction*)
+
+  #+nil(if (actor-contact-surface a)
        ;; standing on something.
        (progn
 	 ;; only if in contact with something below us.
@@ -56,7 +59,7 @@ actor."
 		   
 		 ;; when lsa is :y...
 		 (when (and (eql (car lsa) :y)
-			    (> (iso-point-y (actor-position alice))
+			    (< (iso-point-y (actor-position alice))
 			       (iso-point-y (actor-position bob))))
 		   (setf (actor-contact-surface alice) bob))
 
@@ -65,7 +68,7 @@ actor."
 				 lsa impulse alice)))))
 	   *actor-map*)
 
-  (room-collision-detection alice))
+  #+nil(room-collision-detection alice))
 
 
 (defun room-collision-detection (alice)
@@ -109,9 +112,17 @@ actor."
 
 (defun try-floor-collision (alice x z)
   (if (or (minusp x) (minusp z))
-      (resolve-collision
-       alice
-       (make-wall-object x z))
+      (let ((wall-obj (make-wall-object x z)))
+	(when (penetrating-p alice wall-obj)
+	  (multiple-value-bind (impulse lsa not-lsa)
+	      (resolve-collision alice wall-obj)
+	    (dolist (axis lsa)
+	      (apply-impulse alice
+			     axis
+			     (iso-point-component axis impulse)))
+	    (dolist (axis not-lsa)
+	      (incf (iso-point-component axis (actor-position alice))
+		    (iso-point-component axis impulse))))))
       (let ((floor-obj (make-floor-object x z)))
 	(when (penetrating-p alice floor-obj)
 	  (resolve-collision alice floor-obj)
@@ -198,7 +209,5 @@ actor."
 				  (actor-position alice)))
 	(bob-box (box-translate (actor-box bob)
 				  (actor-position bob))))
-    #+nil(let ((separation (report-axes-of-separation alice-box bob-box)))
-      (setf *debug-projections* separation))
     (boxes-overlap-p alice-box bob-box)))
 

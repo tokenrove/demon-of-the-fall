@@ -43,18 +43,25 @@ priority and screen position."))
     (setf (sprite-animations sprite) (cadr (assoc :animations alist)))
     (setf (sprite-x sprite) 0 (sprite-y sprite) 42 ; XXX sane defaults?
 	  (sprite-priority sprite) 0
-	  (sprite-cur-anim sprite) :default
+	  (sprite-cur-anim sprite) (caar (sprite-animations sprite))
 	  (sprite-cur-frame sprite) 0
 	  (sprite-frame-counter sprite) 0)
     sprite))
 
-(defun update-sprite-coords (sprite position)
+;;; XXX this function does not pay attention to box position.
+(defun update-sprite-coords (sprite position box)
   "Update sprite screen coordinates from world coordinates."
   (multiple-value-bind (u v) (iso-project-point position)
-    (setf (sprite-x sprite) u
-	  (sprite-y sprite) (+ v (sprite-blit-offset sprite))
-	  ;; XXX priority formula isn't quite right
-	  (sprite-priority sprite) (iso-point-z position))))
+    (incf u (car *camera*))
+    (incf v (cdr *camera*))
+    (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
+	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
+    ;; XXX priority formula isn't quite right
+    (let ((point (copy-iso-point position)))
+      (incf (iso-point-x point) (half (iso-point-x (box-dimensions box))))
+      (incf (iso-point-z point) (half (iso-point-z (box-dimensions box))))
+      (setf (sprite-priority sprite) (- (+ (quarter (iso-point-x point))
+					   (quarter (iso-point-z point))))))))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."
