@@ -177,10 +177,9 @@ with the actor manager."
 	     ;; XXX camera
 	     (update-sprite-coords (actor-sprite actor)
 				   (actor-position actor)
-				   (actor-box actor))
+				   actor)
 	     (funcall (actor-handler actor) id actor))
 	   *actor-map*))
-
 
 ;;;; Handlers
 
@@ -197,8 +196,7 @@ with the actor manager."
 	(setf direction :up))
       (if (eql direction :up)
 	  (if (< (iso-point-y (actor-position actor)) 42)
-	      ;(apply-impulse actor :y -0.2)
-	      (setf (iso-point-y (actor-velocity actor)) 0.2)
+	      (setf (iso-point-y (actor-velocity actor)) 0.7)
 	      (setf direction :down))
 	  (if (> (iso-point-y (actor-position actor)) 0)
 	      (setf (iso-point-y (actor-velocity actor)) -0.2)
@@ -219,23 +217,20 @@ events."
     (when (event-pressedp :right)
       (apply-impulse player :z -0.5)
       (set-sprite-animation (actor-sprite player) :walk-east))
-    (when (event-pressedp :jump)
-      (apply-impulse player :y 1.4))))
+    (when (and (event-pressedp :jump)
+	       (actor-contact-surface player))
+      (apply-impulse player :y 6))))
 
 
-(defun pushable-block-handler (face impulse actor)
-;;   if something is on top of us,
-;;       sink its horizontal velocities by our friction,
-;;       add our velocity to its velocity.
-  )
+(defun pushable-block-handler (us them face impulse)
+  (declare (ignore them))
+  (decf (iso-point-component face (actor-velocity us))
+	(iso-point-component face impulse)))
 
-(defun player-contact-handler (face impulse actor)
-;;   if something is on top of us,
-;;       sink its horizontal velocities by our friction,
-;;       add our velocity to its velocity.
-;;   if something is being pushed horizontally by us,
-;;       apply impulse to it.
-  )
+(defun player-contact-handler (us them face impulse)
+  (declare (ignore them))
+  (decf (iso-point-component face (actor-velocity us))
+	(iso-point-component face impulse))))
 
 ;; (defun monster-contact-handler ()
 ;;    if something is on top of us,

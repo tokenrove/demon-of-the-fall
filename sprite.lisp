@@ -49,19 +49,14 @@ priority and screen position."))
     sprite))
 
 ;;; XXX this function does not pay attention to box position.
-(defun update-sprite-coords (sprite position box)
+(defun update-sprite-coords (sprite position actor)
   "Update sprite screen coordinates from world coordinates."
   (multiple-value-bind (u v) (iso-project-point position)
     (incf u (car *camera*))
     (incf v (cdr *camera*))
     (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
 	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
-    ;; XXX priority formula isn't quite right
-    (let ((point (copy-iso-point position)))
-      (incf (iso-point-x point) (half (iso-point-x (box-dimensions box))))
-      (incf (iso-point-z point) (half (iso-point-z (box-dimensions box))))
-      (setf (sprite-priority sprite) (- (+ (quarter (iso-point-x point))
-					   (quarter (iso-point-z point))))))))
+    (setf (sprite-priority sprite) actor)))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."
@@ -108,8 +103,27 @@ priority and screen position."))
 
 (defun update-all-sprites ()
   ;; XXX could be a lot more efficient if we cared.
-  (setf *global-sprite-list* (stable-sort *global-sprite-list*
-					  #'<=
-					  :key #'sprite-priority))
+  (setf *global-sprite-list*
+	(stable-sort
+	 *global-sprite-list*
+	 (lambda (a b)
+	   (let ((adim (box-dimensions (actor-box a)))
+		 (bdim (box-dimensions (actor-box b))))
+	     ;; if z overlap, then do more intensive tests.
+	     ;; otherwise, sort by z.
+	     (if (extents-overlap-p #1=(iso-point-z (actor-position a))
+				    (+ #1# (iso-point-z adim))
+				    #2=(iso-point-z (actor-position b))
+				  (+ #2# (iso-point-z bdim)))
+	       (if (extents-overlap-p #3=(iso-point-x (actor-position a))
+				  (+ #3# (iso-point-x adim))
+				  #4=(iso-point-x (actor-position b))
+				  (+ #4# (iso-point-x bdim)))
+		   (<= (iso-point-y (actor-position a))
+		       (iso-point-y (actor-position b)))
+		   (>= #3# #4#))
+	       (>= #1# #2#))))
+	 :key #'sprite-priority))
+
   (loop for sprite in *global-sprite-list*
 	do (draw-sprite sprite)))

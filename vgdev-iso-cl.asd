@@ -17,6 +17,7 @@
      ;; high-level logic
      (:file "actor" :depends-on ("package" "sprite" "math"))
      (:file "utilities" :depends-on ("package" "graphics" "math" "actor"))
+     (:file "osd" :depends-on ("package" "graphics" "actor"))
      (:file "physics" :depends-on ("actor" "math"))
      (:file "room" :depends-on ("package" "graphics" "math"))
      (:file "main" :depends-on ("actor" "room" "graphics" "event"

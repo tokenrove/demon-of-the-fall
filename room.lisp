@@ -11,7 +11,7 @@
 (defconstant +tile-size+ 64)
 
 (defparameter *room-lowest-point* 0)
-(defparameter *room-highest-point* -256)
+(defparameter *room-highest-point* 256)
 
 ;;;; FLOORS
 

@@ -24,6 +24,17 @@
 		 (and (minusp ,gplace) (minusp ,gval))) (decf ,place ,gval))
 	    (t (incf ,place ,gval))))))
 
+(defmacro clampf (place value)
+  "If PLACE exceeds |VALUE|, reduce it until |PLACE| = |VALUE|."
+  (let ((gplace (gensym))
+	(gval (gensym)))
+    `(let ((,gval ,value)
+	   (,gplace ,place))
+      (when (>= (abs ,gval) (abs ,gplace))
+	(if (plusp ,gplace)
+	    (setf ,gplace ,gval)
+	    (setf ,gplace (- ,gval)))))))
+
 ;; Note that we could add compiler macros here to do things like
 ;; precompute constant values, and use ash instead of / when the type
 ;; is integer.
@@ -80,15 +91,18 @@
 
 (defun iso-project-point (p)
   "Project a world coordinate (3D) point onto screen coordinates.
-Returns two values, X and Y in screen coordinates.  This is *before*
-camera positioning."
+Returns three values, X and Y in screen coordinates, and a ``real'' Z
+value.  This is *before* camera positioning."
   (let ((sx (- (half (iso-point-x p)) (half (iso-point-z p))))
 	(sy (- (half (display-height))
 	       (+ (iso-point-y p)
 		  (quarter (iso-point-x p))
-		  (quarter (iso-point-z p))))))
+		  (quarter (iso-point-z p)))))
+	(sz (- (+ (quarter (iso-point-y p))
+		  (+ (half (iso-point-x p))
+		     (half (iso-point-z p)))))))
 ;    (decf sy (half (display-height)))
-    (values (round sx) (round sy))))
+    (values (round sx) (round sy) (round sz))))
 
 ;;; XXX this and the following functions should have non-consing
 ;;; variants for sane in-game use.
