@@ -7,7 +7,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; XXX eventually needs to figure out how to find the data.
   (assert
-   (load-foreign-library "./low-level.so"
+   (load-foreign-library "./game-fetus-alpha/low-level.so"
 			 :module "low-level"
 			 :supporting-libraries '("c")
 			 :force-load t)))

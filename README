@@ -22,9 +22,6 @@ though.
 the most stable, as it is the platform on which most development is
 done.
 
-
-DATA FILES
-
 * SBCL on Linux/PPC -- one of my standard development platforms.
 Wretched GC pauses.
 
@@ -36,12 +33,15 @@ it will be usable.
 the FFI here, I will try to have this running; currently it's a no-go
 due to lack of UFFI support.
 
+
+DATA FILES
+
 Anything in ret-data/ is (effectively) created by Retsyn.
 Anything in other-data/ has been obtained from other sources, as
 placeholders, and must be removed before the game is released.
 
 
-Caveats to level designers:
+CAVEATS TO LEVEL DESIGNERS
 
 * Places where there are no floor tiles cannot be crossed by the
 player, even if there are other things above the floor.  Use an
@@ -52,7 +52,20 @@ will always have the clip rectangle of a floor tile, and it won't
 animate.
 
 
-Refactorings:
+MODULES
+
+game-fetus-alpha
+	Simple 2D game toolkit library; hopefully will see use outside
+	of this project.
+
+aequus-noctis
+	Engine for Equinox-style isometric games.
+
+demon-of-the-fall
+	Scenario-specific code and data.
+
+
+REFACTORINGS:
 
 Lots of stuff should be more data driven:
 	event handling in editors.

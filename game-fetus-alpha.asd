@@ -15,4 +15,8 @@
 	       (:file "event" :depends-on ("package" "uffi"))
 	       ;; middle-level
 	       (:file "font" :depends-on ("package" "graphics" "uffi"))
-	       (:file "sprite" :depends-on ("package" "graphics"))))))
+	       (:file "sprite" :depends-on ("package" "graphics"))
+	       (:file "layer" :depends-on ("package" "graphics"))
+	       (:file "generic-editor" :depends-on ("package"
+						    "graphics"
+						    "event"))))))

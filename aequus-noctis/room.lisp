@@ -12,6 +12,7 @@
 (defparameter *room-highest-point* 256)
 (defparameter *floor-slice-y* -16)
 (defparameter *slice-height-increment* 32)
+(defparameter *floor-tile-height* 16)
 
 ;; Remember that a change made to this array needs to be followed by a
 ;; call to initialize-tiles.
@@ -130,20 +131,25 @@
   (with-open-file (stream rooms-file)
     (setf *room-set* (read stream))))
 
-(defclass room ()
+(defclass iso-room ()
   ((floor :accessor room-floor)
    (blocks :accessor room-blocks)
    (exits :accessor room-exits)
    (actors :accessor room-actors)
    (archetype :accessor room-archetype)
    (name :accessor room-name)
-   (player-spawn :accessor room-player-spawn)))
+   (player-spawn :accessor room-player-spawn))
+;   )
+  (:documentation "ISO-ROOM encapsulates the concept of a location; a
+floor, fixed blocks (set), and actors.  This class is called ISO-ROOM
+to avoid conflict with the CL symbol ROOM, but all of its associated
+methods drop the ISO qualifier."))
 
 (defun load-room (name sprite-manager &key (spawn-actors-p t))
   (setf *wall-objects* (make-hash-table)
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
-  (let ((room (make-instance 'room))
+  (let ((room (make-instance 'iso-room))
 	(archetype (assoc name *room-set*)))
     (setf (room-floor room) (cdr (assoc :floor (cdr archetype)))
 	  (room-exits room) (cdr (assoc :exits (cdr archetype)))

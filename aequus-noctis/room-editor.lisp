@@ -10,11 +10,13 @@
 (in-package :aequus-noctis)
 
 (defvar *sprite-manager* nil)
+(defvar *default-font* nil)
 
 ;;;; EDITING COMPONENTS
 
 (defun place-floor-tile (cursor tile)
-  "Returns T if the floor was modified, NIL otherwise."
+  "Places a floor tile in *CURRENT-ROOM* at the supplied cursor
+position.  Returns T if the floor was modified, NIL otherwise."
   (let ((orig-tile (aref (room-floor *current-room*)
 			 (floor (iso-point-z cursor) +tile-size+)
 			 (floor (iso-point-x cursor) +tile-size+))))
@@ -28,8 +30,9 @@
       t)))
 
 (defun remove-block (cursor)
-  "Returns T if the room was modified (if there was an actor at the
-cursor point, NIL otherwise."
+  "Removes an immobile block from *CURRENT-ROOM* at the supplied
+cursor position (if there's one there).  Returns T if the room was
+modified, NIL otherwise."
   (let* ((point-list (mapcar (lambda (x y) (floor x y))
 			     (iso-point-list cursor)
 			     (list +tile-size+ *slice-height-increment*
@@ -46,8 +49,10 @@ cursor point, NIL otherwise."
       t)))
 
 
-;; as above.
 (defun place-block (cursor tile)
+  "Places an immobile block of type TILE in *CURRENT-ROOM* at the
+supplied cursor position.  If there's already something there, we
+remove it.  Returns T if the room was modified, NIL otherwise."
   (let* ((block (append (list tile)
 			(mapcar (lambda (x y) (floor x y))
 				(iso-point-list cursor)
@@ -69,20 +74,28 @@ cursor point, NIL otherwise."
     t))
 
 
+(defun at-floor-level-p (cursor)
+  "Returns T if the cursor's Y is at floor level, NIL otherwise."
+  (= (iso-point-y cursor) *floor-slice-y*))
+
+
 ;;;; HIGH-LEVEL ROUTINES
 
 (defun room-editor (room-to-edit)
   "Interactive level editor on the current display, affecting the
-given ROOM.  Note that the display must already have been created."
+ROOM-TO-EDIT, which is loaded from *ROOM-SET*.  Note that the display
+must already have been created with FETUS:CREATE-DISPLAY."
   (fetus:font-init)
-  (fetus:load-default-font "other-data/pph.ttf" 18)
+  (setf *default-font* (fetus:load-font "other-data/pph.ttf" 18))
   (initialize-tiles)
-  (setf *sprite-manager* (fetus:create-sprite-manager))
-  (load-room room-to-edit :spawn-actors-p nil)
+  (setf *sprite-manager* (fetus:create-sprite-manager #'isometric-sprite-cmp))
+  (load-room room-to-edit *sprite-manager* :spawn-actors-p nil)
 
   (do ((entry-mode :blocks)
        (slice-cursor (make-iso-point))
-       (cursor-box (make-box :dimensions #I(+tile-size+ 16 +tile-size+)))
+       (cursor-box (make-box :dimensions #I(+tile-size+
+					    *floor-tile-height*
+					    +tile-size+)))
        (cur-tile 1)
        (cur-spawn :apple)
        (dirty-floor-p nil)
@@ -94,8 +107,10 @@ given ROOM.  Note that the display must already have been created."
       (cond ((= event (char-code #\q))
 	     (when (or (not unsaved-changes-p)
 		       (editor-yes-no-prompt
+			*default-font*
 			"Unsaved changes - really quit? (Y/N)"))
 	       (return)))
+
 	    ((= event (char-code #\a))
 	     (unless (eql entry-mode :actors)
 	       (setf entry-mode :actors)
@@ -104,6 +119,7 @@ given ROOM.  Note that the display must already have been created."
 	     (unless (eql entry-mode :blocks)
 	       (setf entry-mode :blocks)
 	       (editor-osd-display-message "Blocks mode.")))
+
 	    ((= event (char-code #\p))
 	     (if (eql entry-mode :blocks)
 		 (setf cur-tile
@@ -114,8 +130,10 @@ given ROOM.  Note that the display must already have been created."
 				     (lambda (x) nil)
 				     (lambda (x)
 				       (format nil "~A" (car x)))))))
+
 	    ((= event (char-code #\w))
-	     (when (editor-yes-no-prompt "Really write changes? (Y/N)")
+	     (when (editor-yes-no-prompt *default-font*
+					 "Really write changes? (Y/N)")
 	       (with-open-file (stream output-file
 				       :direction :output
 				       :if-exists :supersede)
@@ -125,18 +143,22 @@ given ROOM.  Note that the display must already have been created."
 		 (print *room-set* stream))
 	       (setf unsaved-changes-p nil)
 	       (editor-osd-display-message "Written to ~A." output-file)))
+
 	    ((= event (char-code #\e))
 	     (edit-exits-dialog))
+
 	    ((= event (char-code #\r))
 	     (when (editor-yes-no-prompt
+		    *default-font*
 		    (if unsaved-changes-p
 			"Really re-read data? (you have unsaved changes!)"
 			(format nil "Read map data from ~A?" output-file)))
 	       (initialize-room-data output-file)
-	       (load-room room-to-edit :spawn-actors-p nil)
+	       (load-room room-to-edit *sprite-manager* :spawn-actors-p nil)
 	       (setf unsaved-changes-p t)
 	       (editor-osd-display-message "Room data freshly read from ~A."
 					   output-file)))
+
 	    ((or (= event (char-code #\h))
 		 (= event (char-code #\/)) ; #\? without shift.
 		 (= event 282))		; F1
@@ -144,20 +166,22 @@ given ROOM.  Note that the display must already have been created."
 	    ((= event (char-code #\c))
 	     (let ((dest-room (change-rooms-dialog room-to-edit)))
 	       (fetus:destroy-sprite-manager *sprite-manager*)
-	       (setf *sprite-manager* (fetus:create-sprite-manager))
-	       (load-room dest-room :spawn-actors-p nil)
+	       (setf *sprite-manager* (fetus:create-sprite-manager
+				       #'isometric-sprite-cmp))
+	       (load-room dest-room *sprite-manager* :spawn-actors-p nil)
 	       (editor-osd-display-message "Change to room ~A."
 					   dest-room)))
+
 	    ;; slice events
 	    ((= event (char-code #\-))
 	     (unless (< (iso-point-y slice-cursor) 0)
 	       (if (= (iso-point-y slice-cursor) 0)
-		   (setf (iso-point-y slice-cursor) -16)
+		   (setf (iso-point-y slice-cursor) *floor-slice-y*)
 		   (decf (iso-point-y slice-cursor)
 			 *slice-height-increment*))))
 	    ((= event (char-code #\=))	; #\+ without shift.
 	     (unless (> (iso-point-y slice-cursor) *room-highest-point*)
-	       (if (= (iso-point-y slice-cursor) -16)
+	       (if (at-floor-level-p slice-cursor)
 		   (setf (iso-point-y slice-cursor) 0)
 		   (incf (iso-point-y slice-cursor)
 			 *slice-height-increment*))))
@@ -175,10 +199,11 @@ given ROOM.  Note that the display must already have been created."
 	     (unless (>= (ceiling (iso-point-z slice-cursor) +tile-size+)
 			 (1- (room-depth)))
 	       (incf (iso-point-z slice-cursor) +tile-size+)))
+
 	    ;; edit events
 	    ((= event (char-code #\z))
 	     (if (eql entry-mode :blocks)
-		 (if (= (iso-point-y slice-cursor) -16)
+		 (if (at-floor-level-p slice-cursor)
 		     (awhen (place-floor-tile slice-cursor cur-tile)
 			    (setf dirty-floor-p t
 				  unsaved-changes-p t))
@@ -187,7 +212,7 @@ given ROOM.  Note that the display must already have been created."
 		 (format t "~&spawn!")))
 	    ((= event (char-code #\x))
 	     (if (eql entry-mode :blocks)
-		 (if (= (iso-point-y slice-cursor) -16)
+		 (if (at-floor-level-p slice-cursor)
 		     (awhen (place-floor-tile slice-cursor 0)
 			    (setf dirty-floor-p t
 				  unsaved-changes-p t))
@@ -224,23 +249,25 @@ given ROOM.  Note that the display must already have been created."
 						 (assoc :box arch))))
 			  :partial t)))
 
-      (if (= (iso-point-y slice-cursor) -16)
-	  (setf (iso-point-y (box-dimensions cursor-box)) 16)
-	  (setf (iso-point-y (box-dimensions cursor-box)) 32))
+      (if (at-floor-level-p slice-cursor)
+	  (setf (iso-point-y (box-dimensions cursor-box)) *floor-tile-height*)
+	  (setf (iso-point-y (box-dimensions cursor-box))
+		*slice-height-increment*))
       (setf (box-position cursor-box) slice-cursor)
 
-      (if (= (iso-point-y slice-cursor) -16)
+      (if (at-floor-level-p slice-cursor)
 	  (draw-top-cursor cursor-box)
 	  (draw-debug-box cursor-box :partial t))
 
       (aif *editor-osd-message*
 	   (progn
-	     (draw-status-message (cdr it)
+	     (draw-status-message *default-font* (cdr it)
 				  100 100 140)
 	     (decf (car it))
 	     (when (zerop (car it))
 	       (setf *editor-osd-message* nil)))
-	   (draw-status-message (format nil "X,Z: ~A,~A  Y: ~A  Room: ~A"
+	   (draw-status-message *default-font*
+				(format nil "X,Z: ~A,~A  Y: ~A  Room: ~A"
 					(floor (iso-point-x slice-cursor)
 					       +tile-size+)
 					(floor (iso-point-z slice-cursor)
@@ -250,7 +277,7 @@ given ROOM.  Note that the display must already have been created."
 				40 40 80))
       (refresh-display))
   
-  (fetus:destroy-font)
+  (fetus:destroy-font *default-font*)
   (fetus:destroy-sprite-manager *sprite-manager*))
 
 (defun palette-mode (set image-fn name-fn)
@@ -264,7 +291,8 @@ given ROOM.  Note that the display must already have been created."
 	(when (< (+ x (* y max-column)) (length set))
 	  (awhen (funcall image-fn (elt set (+ x (* y max-column))))
 		 (fetus:blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
-	  (fetus:paint-string (funcall name-fn
+	  (fetus:paint-string *default-font*
+			      (funcall name-fn
 				       (elt set
 					    (+ x (* y max-column))))
 			      (+ 10 (* 104 x)) (+ 60 (* 70 y)) 220 220 255))))
@@ -310,6 +338,7 @@ given ROOM.  Note that the display must already have been created."
 	((null list))
       (awhen (car list)
 	     (paint-string
+	      *default-font*
 	      (if (consp it) (cadr it) it)
 	      (if (consp it) (car it) 10)
 	      (+ 4 (* i 19)) 255 255 255)))
@@ -341,13 +370,16 @@ given ROOM.  Note that the display must already have been created."
 	 (list (room-exits *current-room*) (cdr list)))
 	((null list))
       (paint-string
+       *default-font*
        (format nil "~A ~A ~A" (first (car list))
 	       (second (car list)) (third (car list)))
        12
        (+ 10 (* i 22)) 255 255 255))
-    (paint-string "Hit N to create a new exit, D to delete an exit."
+    (paint-string *default-font*
+		  "Hit N to create a new exit, D to delete an exit."
 		  12 170 240 200 200)
-    (paint-string "Hit 1, 2, or 3 to edit parts of an exit."
+    (paint-string *default-font*
+		  "Hit 1, 2, or 3 to edit parts of an exit."
 		  12 190 240 200 200)
     (refresh-display)
 
@@ -366,14 +398,14 @@ given ROOM.  Note that the display must already have been created."
 			       (setf cursor 0)))
 	    ((= event (char-code #\1))
 	     (setf (car (first (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt "X: ")
+		   (editor-number-prompt *default-font* "X: ")
 		   (cdr (first (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt "Y: ")))
+		   (editor-number-prompt *default-font* "Z: ")))
 	    ((= event (char-code #\3))
 	     (setf (car (third (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt "X: ")
+		   (editor-number-prompt *default-font* "X: ")
 		   (cdr (third (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt "Y: ")))
+		   (editor-number-prompt *default-font* "Z: ")))
 	    ((= event (char-code #\2))
 	     (setf (second (nth cursor (room-exits *current-room*)))
 		   (change-rooms-dialog
@@ -407,12 +439,15 @@ given ROOM.  Note that the display must already have been created."
 	 (list *room-set* (cdr list)))
 	((null list))
       (paint-string
+       *default-font*
        (format nil "~A: ~A" (caar list) (cdr (assoc :name (cdar list))))
        12
        (+ 10 (* i 22)) 255 255 255))
-    (paint-string "Select a room with [enter]"
+    (paint-string *default-font*
+		  "Select a room with [enter]"
 		  12 170 240 200 200)
-    (paint-string "Hit N to create a new room."
+    (paint-string *default-font*
+		  "Hit N to create a new room."
 		  12 190 240 200 200)
     (refresh-display)
 
@@ -424,12 +459,14 @@ given ROOM.  Note that the display must already have been created."
 			       (incf cursor)
 			       (setf cursor 0)))
 	    ((= event (char-code #\n))
-	     (let* ((name (intern (editor-string-prompt "Symbol name: "
+	     (let* ((name (intern (editor-string-prompt *default-font*
+							"Symbol name: "
 							:symbol-mode t)
 				  :keyword))
-		    (real-name (editor-string-prompt "Real name: "))
-		    (width (editor-number-prompt "width: "))
-		    (depth (editor-number-prompt "depth: ")))
+		    (real-name (editor-string-prompt *default-font*
+						     "Real name: "))
+		    (width (editor-number-prompt *default-font* "width: "))
+		    (depth (editor-number-prompt *default-font* "depth: ")))
 	       (push `(,(prin1 name)
 		       (:name . ,real-name)
 		       (:floor . ,(make-array (list width depth)
@@ -437,54 +474,8 @@ given ROOM.  Note that the display must already have been created."
 		     *room-set*)
 	       (return name)))))))
 
-;;;; USER-INTERFACE ROUTINES
 
 (defvar *editor-osd-message* nil)
-
-(defun editor-yes-no-prompt (message)
-  (loop
-     (draw-status-message message 128 128 128)
-     (fetus:refresh-display)
-   (let ((event (fetus:get-key-event)))
-     (cond ((= event (char-code #\y)) (return t))
-	   ((= event (char-code #\n)) (return nil))))))
-
-
-(defun editor-string-prompt (message &key (symbol-mode nil))
-  (do ((string (make-array '(10) :element-type 'base-char
-			   :fill-pointer 0 :adjustable t)))
-      (nil)
-    (draw-status-message (format nil "~A~A" message string) 128 128 128)
-    (refresh-display)
-    (let ((event (get-key-event)))
-      (cond ((= event 13) (return string))
-	    ((< 31 event 126)
-	     (let ((char (code-char event)))
-	       (when symbol-mode
-		 (setf char (char-upcase char))
-		 (when (eql char #\Space) (setf char #\-)))
-	       (vector-push-extend char string)))
-	    ((= event 8) (vector-pop string))))))
-
-
-(defun editor-number-prompt (message)
-  (do ((number 0))
-      (nil)
-    (draw-status-message (format nil "~A~A" message number) 128 128 128)
-    (refresh-display)
-    (let ((event (get-key-event)))
-      (cond ((= event 13) (return number))
-	    ((< 47 event 58) (setf number (+ (* number 10) (- event 48))))
-	    ((= event 8) (setf number (floor number 10)))))))
-
-
-(defun draw-status-message (message r g b)
-  (draw-filled-rectangle 8 (- (display-height) 32) (- (display-width) 16) 24
-			 r) ;(gfx-map-rgb r g b)
-  (draw-rectangle 8 (- (display-height) 32) (- (display-width) 16) 24
-		  32) ;(gfx-map-rgb 32 32 32)
-  (paint-string message 10 (- (display-height) 30) 255 255 255))
-
 
 (defun editor-osd-display-message (&rest arguments)
   (setf *editor-osd-message*

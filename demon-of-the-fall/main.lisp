@@ -23,50 +23,48 @@
 given ROOM.  Note that the display must already have been created."
   (fetus:font-init)
   (equinox:initialize-tiles)
-  (let ((sprite-manager (fetus:create-sprite-manager
-			 #'equinox:isometric-sprite-cmp)))
+  (fetus:with-sprite-manager (sprite-manager #'equinox:isometric-sprite-cmp)
     (equinox:create-actor-manager)
     (fetus:wipe-events)
     (setf equinox:*magic-exit-hack* nil
 	  equinox:*exit-counter* 0)
 
     (let ((fps-count (cons 0 (fetus:timer-get-ticks))))
-      (fetus:load-default-font "other-data/spn.ttf" 24)
-      (equinox:load-room starting-room sprite-manager)
+      (fetus:with-font (font "other-data/spn.ttf" 24)
+	(equinox:load-room starting-room sprite-manager)
 
-      ;; spawn the player, have the camera follow it.
-      (setf equinox:*camera-follow*
-	    (equinox:spawn-actor-from-archetype :peter
-						(equinox::iso-point-from-list
-						 (equinox::room-player-spawn equinox::*current-room*))
-						sprite-manager))
-      (loop
-	 (fetus:timer-start-frame 20)
-	 (fetus:event-update)
-	 (when (fetus:event-pressedp fetus:+ev-quit+)
-	   (return))
+	;; spawn the player, have the camera follow it.
+	(setf equinox:*camera-follow*
+	      (equinox:spawn-actor-from-archetype :peter
+						  (equinox::iso-point-from-list
+						   (equinox::room-player-spawn equinox::*current-room*))
+						  sprite-manager))
+	(loop
+	   (fetus:timer-start-frame 20)
+	   (fetus:event-update)
+	   (when (fetus:event-pressedp fetus:+ev-quit+)
+	     (return))
 
-	 (when (equinox:check-room-change sprite-manager)
-	   (fetus:destroy-sprite-manager sprite-manager)
-	   (setf sprite-manager (fetus:create-sprite-manager
-				 #'equinox:isometric-sprite-cmp)))
+	   (when (equinox:check-room-change sprite-manager)
+	     (fetus:destroy-sprite-manager sprite-manager)
+	     (setf sprite-manager (fetus:create-sprite-manager
+				   #'equinox:isometric-sprite-cmp)))
+	   
+	   (equinox:update-all-actors 20)
+	   (equinox:room-redraw)
+	   (update-camera equinox::*camera-follow*)
+	   (fetus:update-all-sprites sprite-manager)
 
-	 (equinox:update-all-actors 20)
-	 (equinox:room-redraw)
-	 (update-camera equinox::*camera-follow*)
-	 (fetus:update-all-sprites sprite-manager)
+	   (paint-osd)
+	   (fetus:refresh-display)
 
-	 (paint-osd)
-	 (fetus:refresh-display)
+	   (fetus:timer-end-frame)
+	   (incf (car fps-count)))
 
-	 (fetus:timer-end-frame)
-	 (incf (car fps-count)))
-
-      (fetus:destroy-font)
-      (fetus:destroy-sprite-manager sprite-manager)
-      (format t "~&Frames-per-second: ~D"
-	      (float (* 1000 (/ (car fps-count) (- (fetus:timer-get-ticks)
-						   (cdr fps-count)))))))))
+	(fetus:destroy-sprite-manager sprite-manager)
+	(format t "~&Frames-per-second: ~D"
+		(float (* 1000 (/ (car fps-count) (- (fetus:timer-get-ticks)
+						     (cdr fps-count))))))))))
 
 
 (defun update-camera (actor)

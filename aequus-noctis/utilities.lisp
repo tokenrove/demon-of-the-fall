@@ -1,3 +1,6 @@
+;;; The contents of this file is due to be drastically changed.  These
+;;; so-called utilities are really, at best, debugging utilities, and
+;;; at worst, secretly editor/UI component helpers.
 
 (in-package :aequus-noctis)
 
@@ -68,32 +71,3 @@
 
     (debugging-line-draw #i(0 y z) #i(x y z) pos)
     (debugging-line-draw #i(x y 0) #i(x y z) pos)))
-
-(defun draw-back-of-actor-box (actor)
-  (let* ((pos (copy-iso-point (actor-position actor)))
-	 (box (box-dimensions (actor-box actor)))
-	 (x (iso-point-x box))
-	 (y (iso-point-y box))
-	 (z (iso-point-z box)))
-    ;; back
-    (debugging-line-draw #i(x y z) #i(x y 0) pos)
-    (debugging-line-draw #i(x y 0) #i(x 0 0) pos)
-    (debugging-line-draw #i(0 y 0) #i(x y 0) pos)
-    (debugging-line-draw #i(0 0 0) #i(x 0 0) pos)
-    (debugging-line-draw #i(x 0 z) #i(x 0 0) pos)))
-
-(defun draw-front-of-actor-box (actor)
-  (let* ((pos (copy-iso-point (actor-position actor)))
-	 (box (box-dimensions (actor-box actor)))
-	 (x (iso-point-x box))
-	 (y (iso-point-y box))
-	 (z (iso-point-z box)))
-    ;; front
-    (debugging-line-draw #i(0 y z) #i(0 0 z) pos)
-    (debugging-line-draw #i(x y z) #i(0 y z) pos)
-    (debugging-line-draw #i(x 0 z) #i(0 0 z) pos)
-    (debugging-line-draw #i(x y z) #i(x 0 z) pos)
-    (debugging-line-draw #i(0 y 0) #i(0 y z) pos)
-    (debugging-line-draw #i(0 y 0) #i(0 0 0) pos)
-    (debugging-line-draw #i(0 0 0) #i(0 0 z) pos)))
-

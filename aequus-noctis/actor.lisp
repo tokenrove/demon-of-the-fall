@@ -34,6 +34,8 @@ game world.")
   "Actor unique ID counter, should always contain an ID which is not
 currently in use by any live actors.")
 
+(defun for-each-actor (manager function)
+  (maphash function (actor-manager-map manager)))
 
 (defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
   (with-open-file (stream archetypes-file)
