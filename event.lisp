@@ -16,18 +16,19 @@
 
 ;; XXX it would be nice if this table used keysym names, rather than
 ;; hardcoded constants.
-(let ((hash (make-hash-table)))
-  (dolist (x  '((27 . #.+ev-quit+)	; ESC -> :quit
-		(113 . #.+ev-quit+)	; q -> :quit
-		(273 . #.+ev-up+)	; up -> :up
-		(274 . #.+ev-down+)	; down -> :down
-		(276 . #.+ev-left+)	; left -> :left
-		(275 . #.+ev-right+)	; right -> :right
-		(122 . #.+ev-jump+)))	; z -> :jump
-    (setf (gethash (car x) hash) (cdr x)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (let ((hash (make-hash-table)))
+    (dolist (x  '((27 . #.+ev-quit+)	; ESC -> :quit
+		  (113 . #.+ev-quit+)	; q -> :quit
+		  (273 . #.+ev-up+)	; up -> :up
+		  (274 . #.+ev-down+)	; down -> :down
+		  (276 . #.+ev-left+)	; left -> :left
+		  (275 . #.+ev-right+)	; right -> :right
+		  (122 . #.+ev-jump+)))	; z -> :jump
+      (setf (gethash (car x) hash) (cdr x)))
 
-  (defparameter *xlate-symbol->map-idx* hash
-    "Translates an SDL KeySym value to a symbolic *event-map* key."))
+    (defparameter *xlate-symbol->map-idx* hash
+      "Translates an SDL KeySym value to a symbolic *event-map* key.")))
 
 (defparameter *last-ev-code* 8)
 
@@ -41,19 +42,19 @@
   "function EVENT-UPDATE
 
 Refresh the state of *EVENT-MAP*."
-  (with-foreign-object (event 'sdl:event)
-    (do ((rv #1=(sdl:poll-event event) #1#))
-	((= rv 0))
-      (let ((type (sdl:event-type event)))
-	(cond ((= type sdl:+key-down+)
-	       (awhen (gethash (sdl:event-key-symbol event)
-			       *xlate-symbol->map-idx*)
-		      (setf (bit *event-map* it) 1)))
-	      ((= type sdl:+key-up+)
-	       (awhen (gethash (sdl:event-key-symbol event)
-			       *xlate-symbol->map-idx*)
-		      (setf (bit *event-map* it) 0))))))))
-  
+  (with-foreign-object (event 'll-event)
+    (do* ((rv #1=(ll-poll-event event) #1#)
+	  (type #2=(get-slot-value event 'll-event 'type) #2#))
+	 ((= rv 0))
+      (cond ((= type +ll-event-key-down+)
+	     (awhen (gethash (get-slot-value event 'll-event 'keysym)
+			     *xlate-symbol->map-idx*)
+		    (setf (bit *event-map* it) 1)))
+	    ((= type +ll-event-key-up+)
+	     (awhen (gethash (get-slot-value event 'll-event 'keysym)
+			     *xlate-symbol->map-idx*)
+		    (setf (bit *event-map* it) 0)))))))
+
 (defun event-pressedp (ev)
   "Returns true if the given button is pressed."
   (= (bit *event-map* ev) 1))

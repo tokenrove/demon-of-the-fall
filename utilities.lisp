@@ -14,7 +14,7 @@
       (incf y2 (cdr *camera*))
       (when (minusp x2) (setf x2 0))
       (when (minusp y2) (setf y2 0))
-      (sdl:draw-line *vbuffer* x1 y1 x2 y2 255 255 255))))
+      (draw-line x1 y1 x2 y2 255))))
 
 (defun draw-bottom-cursor (box)
   (let* ((x (iso-point-x (box-dimensions box)))
@@ -92,7 +92,7 @@
     (debugging-line-draw #i(0 0 0) #i(0 0 z) pos)))
 
 
-(defun draw-triangle (xs ys lr lg lb fr fg fb)
+#+nil(defun draw-triangle (xs ys lr lg lb fr fg fb)
   (let ((cover 0))
     (maplist (lambda (x)
 	       (incf (car x) (car *camera*))
@@ -114,9 +114,9 @@
 	     ys)
 
     (unless (> cover 2)
-      (sdl:draw-filled-triangle *vbuffer* (first xs) (first ys)
-				(second xs) (second ys) (third xs) (third ys)
-				fr fg fb)
-      (sdl:draw-triangle *vbuffer* (first xs) (first ys)
-			 (second xs) (second ys) (third xs) (third ys)
-			 lr lg lb))))
+      #+nil(draw-filled-triangle *vbuffer* (first xs) (first ys)
+				 (second xs) (second ys) (third xs) (third ys)
+				 fr fg fb)
+      #+nil(draw-triangle *vbuffer* (first xs) (first ys)
+			  (second xs) (second ys) (third xs) (third ys)
+			  lr lg lb))))

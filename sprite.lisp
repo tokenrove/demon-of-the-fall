@@ -48,14 +48,6 @@ priority and screen position."))
 	  (sprite-frame-counter sprite) 0)
     sprite))
 
-;;; XXX this function does not pay attention to box position.
-(defun update-sprite-coords (sprite position actor)
-  "Update sprite screen coordinates from world coordinates."
-  (multiple-value-bind (u v) (iso-project-point position)
-    (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
-	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
-    (setf (sprite-priority sprite) actor)))
-
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."
   ;; XXX incomplete, should parse animations
@@ -67,11 +59,9 @@ priority and screen position."))
     (multiple-value-bind (x y w h)
 	(values-list (nth (car (nth (sprite-cur-frame sprite) flist))
 			  (sprite-frames sprite)))
-      (sgum:with-foreign-objects ((src-rect sdl:rect))
-	(rectangle-set src-rect x y w h)
-	(incf u (car *camera*))
-	(incf v (cdr *camera*))
-	(blit-image (sprite-image sprite) src-rect u v)))
+      (incf u (car *camera*))
+      (incf v (cdr *camera*))
+      (blit-image (sprite-image sprite) u v :src-rect (list x y w h)))
     ;; update frame
     (decf (sprite-frame-counter sprite))
     (when (minusp (sprite-frame-counter sprite))
@@ -110,23 +100,7 @@ priority and screen position."))
   (setf *global-sprite-list*
 	(stable-sort
 	 *global-sprite-list*
-	 (lambda (a b)
-	   (let ((adim (box-dimensions (actor-box a)))
-		 (bdim (box-dimensions (actor-box b))))
-	     ;; if z overlap, then do more intensive tests.
-	     ;; otherwise, sort by z.
-	     (if (extents-overlap-p #1=(iso-point-z (actor-position a))
-				    (+ #1# (iso-point-z adim))
-				    #2=(iso-point-z (actor-position b))
-				  (+ #2# (iso-point-z bdim)))
-	       (if (extents-overlap-p #3=(iso-point-x (actor-position a))
-				  (+ #3# (iso-point-x adim))
-				  #4=(iso-point-x (actor-position b))
-				  (+ #4# (iso-point-x bdim)))
-		   (<= (iso-point-y (actor-position a))
-		       (iso-point-y (actor-position b)))
-		   (>= #3# #4#))
-	       (>= #1# #2#))))
+	 #'isometric-sprite-cmp
 	 :key #'sprite-priority))
 
   (loop for sprite in *global-sprite-list*

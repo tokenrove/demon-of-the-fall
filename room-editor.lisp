@@ -68,12 +68,13 @@ given ROOM.  Note that the display must already have been created."
   (load-default-font "pph.ttf" 18)
   (initialize-tiles)
   (create-sprite-manager)
-  (load-room room-to-edit)
+  (load-room room-to-edit :spawn-actors-p nil)
 
   (do ((entry-mode :blocks)
        (slice-cursor (make-iso-point))
        (cursor-box (make-box :dimensions #I(+tile-size+ 16 +tile-size+)))
        (cur-tile 1)
+       (cur-spawn :apple)
        (dirty-floor-p nil)
        (unsaved-changes-p nil)
        (output-file "rooms-edit-test.sexp"))
@@ -93,7 +94,16 @@ given ROOM.  Note that the display must already have been created."
 	     (unless (eql entry-mode :blocks)
 	       (setf entry-mode :blocks)
 	       (editor-osd-display-message "Blocks mode.")))
-	    ((= event (char-code #\p)) (setf cur-tile (palette-mode)))
+	    ((= event (char-code #\p))
+	     (if (eql entry-mode :blocks)
+		 (setf cur-tile
+		       (palette-mode *tiles* #'tile-image
+				     (lambda (x) (car (tile-archetype x)))))
+		 (setf cur-spawn
+		       (palette-mode *actor-archetypes*
+				     (lambda (x) nil)
+				     (lambda (x)
+				       (format nil "~A" (car x)))))))
 	    ((= event (char-code #\w))
 	     (when (editor-yes-no-prompt "Really write changes? (Y/N)")
 	       (with-open-file (stream output-file
@@ -113,7 +123,7 @@ given ROOM.  Note that the display must already have been created."
 			"Really re-read data? (you have unsaved changes!)"
 			(format nil "Read map data from ~A?" output-file)))
 	       (initialize-room-data output-file)
-	       (load-room room-to-edit)
+	       (load-room room-to-edit :spawn-actors-p nil)
 	       (setf unsaved-changes-p t)
 	       (editor-osd-display-message "Room data freshly read from ~A."
 					   output-file)))
@@ -125,7 +135,7 @@ given ROOM.  Note that the display must already have been created."
 	     (let ((dest-room (change-rooms-dialog room-to-edit)))
 	       (destroy-sprite-manager)
 	       (create-sprite-manager)
-	       (load-room dest-room)
+	       (load-room dest-room :spawn-actors-p nil)
 	       (editor-osd-display-message "Change to room ~A."
 					   dest-room)))
 	    ;; slice events
@@ -157,19 +167,23 @@ given ROOM.  Note that the display must already have been created."
 	       (incf (iso-point-z slice-cursor) +tile-size+)))
 	    ;; edit events
 	    ((= event (char-code #\z))
-	     (if (= (iso-point-y slice-cursor) -16)
-		 (awhen (place-floor-tile slice-cursor cur-tile)
-			(setf dirty-floor-p t
-			      unsaved-changes-p t))
-		 (awhen (place-block slice-cursor cur-tile)
-			(setf unsaved-changes-p t))))
+	     (if (eql entry-mode :blocks)
+		 (if (= (iso-point-y slice-cursor) -16)
+		     (awhen (place-floor-tile slice-cursor cur-tile)
+			    (setf dirty-floor-p t
+				  unsaved-changes-p t))
+		     (awhen (place-block slice-cursor cur-tile)
+			    (setf unsaved-changes-p t)))
+		 (format t "~&spawn!")))
 	    ((= event (char-code #\x))
-	     (if (= (iso-point-y slice-cursor) -16)
-		 (awhen (place-floor-tile slice-cursor 0)
-			(setf dirty-floor-p t
-			      unsaved-changes-p t))
-		 (awhen (remove-block slice-cursor)
-			(setf unsaved-changes-p t)))))
+	     (if (eql entry-mode :blocks)
+		 (if (= (iso-point-y slice-cursor) -16)
+		     (awhen (place-floor-tile slice-cursor 0)
+			    (setf dirty-floor-p t
+				  unsaved-changes-p t))
+		     (awhen (remove-block slice-cursor)
+			    (setf unsaved-changes-p t)))
+		 (format t "~&despawn!")))))
 
       (multiple-value-bind (x y) (iso-project-point slice-cursor)
 	(decf x (half (display-width)))
@@ -189,6 +203,16 @@ given ROOM.  Note that the display must already have been created."
 	(setf dirty-floor-p nil))
       (room-redraw)
       (update-all-sprites)
+
+      (dolist (spawn (cdr (assoc :actors
+				 (cdr (room-archetype *current-room*)))))
+	(let ((arch (cdr (assoc (first spawn) *actor-archetypes*))))
+	  (draw-debug-box (make-box
+			   :position (iso-point-from-list (second spawn))
+			   :dimensions
+			   (iso-point-from-list (third
+						 (assoc :box arch))))
+			  :partial t)))
 
       (if (= (iso-point-y slice-cursor) -16)
 	  (setf (iso-point-y (box-dimensions cursor-box)) 16)
@@ -214,34 +238,34 @@ given ROOM.  Note that the display must already have been created."
 					(iso-point-y slice-cursor)
 					(room-name *current-room*))
 				40 40 80))
-      (refresh-display)))
+      (refresh-display))
   
   (destroy-font)
   (destroy-sprite-manager))
 
-(defun palette-mode ()
+(defun palette-mode (set image-fn name-fn)
   (do ((cursor (cons 0 0))
-       (max-row 3)
+       (max-row (/ (length set) 3))
        (max-column 3))
       (nil)
     (fill-background 255)
     (dotimes (y max-row)
       (dotimes (x max-column)
-	(awhen (tile-image (aref *tiles* (1+ (+ x (* y max-column)))))
-	       (blit-image it nil (+ 10 (* 104 x)) (+ 55 (* 70 y))))
-	(paint-string (car (tile-archetype
-			    (aref *tiles*
-				  (1+ (+ x (* y max-column))))))
-		      (+ 10 (* 104 x)) (+ 60 (* 70 y)) 220 220 255)))
-    (sdl:draw-rectangle *vbuffer*
-			(+ 8 (* 104 (car cursor)))
-			(+ 10 (* 70 (cdr cursor)))
-			84 64 255 255 255)
+	(when (< (+ x (* y max-column)) (length set))
+	  (awhen (funcall image-fn (elt set (+ x (* y max-column))))
+		 (blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
+	  (paint-string (funcall name-fn
+				 (elt set
+				      (+ x (* y max-column))))
+			(+ 10 (* 104 x)) (+ 60 (* 70 y)) 220 220 255))))
+    (draw-rectangle (+ 8 (* 104 (car cursor)))
+		    (+ 10 (* 70 (cdr cursor)))
+		    84 64 63)
     (refresh-display)
 
     (let ((event (get-key-event)))
       ;; mode events; please excuse the silly hardcoded SDL keysyms.
-      (cond ((= event 13) (return (+ 1 (car cursor)
+      (cond ((= event 13) (return (+ (car cursor)
 				     (* (cdr cursor) max-column))))
 	    ((= event 273) (when (plusp (cdr cursor)) (decf (cdr cursor))))
 	    ((= event 274) (if (< (cdr cursor) (1- max-row))
@@ -267,7 +291,7 @@ given ROOM.  Note that the display must already have been created."
 		    "p => palette; e => edit exits;"
 		    "z/x => place/remove a tile;"
 		    "q to quit the editor.  Return to quit this help."
-		    nil
+		    "(Please read the README, too!)"
 		    (200 "Have fun!"))))
       (nil)
     (fill-background 1)
@@ -295,12 +319,13 @@ given ROOM.  Note that the display must already have been created."
   (do ((cursor 0)
        (max-row (length (room-exits *current-room*))))
       (nil)
-    (sdl:draw-filled-rectangle *vbuffer* 8 8 (- (display-width) 16)
-			       (- (display-height) 32) 128 128 128)
-    (sdl:draw-rectangle *vbuffer* 8 8 (- (display-width) 16)
-			(- (display-height) 32) 32 32 32)
-    (sdl:draw-filled-rectangle *vbuffer* 11 (+ 10 (* cursor 22))
-			       (- (display-width) 19) 20 240 100 50)
+    (draw-filled-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
+			   128) ;(gfx-map-rgb 128 128 128)
+    (draw-rectangle 8 8 (- (display-width) 16)
+		    (- (display-height) 32) 32) ;(gfx-map-rgb 32 32 32)
+    (draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (display-width) 19) 20
+			   240) ;(gfx-map-rgb 240 100 50)
+
     (do ((i 0 (1+ i))
 	 (list (room-exits *current-room*) (cdr list)))
 	((null list))
@@ -360,12 +385,13 @@ given ROOM.  Note that the display must already have been created."
 	    ((or (null list) (eql cur-room (caar list))) i)))
        (max-row (length *room-set*)))
       (nil)
-    (sdl:draw-filled-rectangle *vbuffer* 8 8 (- (display-width) 16)
-			       (- (display-height) 32) 128 128 128)
-    (sdl:draw-rectangle *vbuffer* 8 8 (- (display-width) 16)
-			(- (display-height) 32) 32 32 32)
-    (sdl:draw-filled-rectangle *vbuffer* 11 (+ 10 (* cursor 22))
-			       (- (display-width) 19) 20 240 100 50)
+    (draw-filled-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
+			   128)	;(gfx-map-rgb 128 128 128)
+    (draw-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
+		    32) ;(gfx-map-rgb 32 32 32)
+    (draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (display-width) 19) 20
+			   240)		;(gfx-map-rgb 240 100 50)
+
     (do ((i 0 (1+ i))
 	 (list *room-set* (cdr list)))
 	((null list))
@@ -404,13 +430,13 @@ given ROOM.  Note that the display must already have been created."
 
 (defvar *editor-osd-message* nil)
 
-(defvar *editor-key-event* (with-foreign-object (event 'sdl:event) event))
 (defun get-key-event ()
-  (do ((rv #1=(sdl:wait-event *editor-key-event*) #1#))
-      ((= rv 0))
-    (let ((type (sdl:event-type *editor-key-event*)))
-      (cond ((= type sdl:+key-down+)
-	     (return (sdl:event-key-symbol *editor-key-event*)))))))
+  (with-foreign-object (event 'll-event)
+    (do ((rv #1=(ll-wait-event event) #1#))
+	((= rv 0))
+      (let ((type (get-slot-value event 'll-event 'type)))
+	(cond ((= type +ll-event-key-down+)
+	       (return (get-slot-value event 'll-event 'keysym))))))))
 
 (defun editor-yes-no-prompt (message)
   (loop
@@ -450,10 +476,10 @@ given ROOM.  Note that the display must already have been created."
 
 
 (defun draw-status-message (message r g b)
-  (sdl:draw-filled-rectangle *vbuffer* 8 (- (display-height) 32)
-			     (- (display-width) 16) 24 r g b)
-  (sdl:draw-rectangle *vbuffer* 8 (- (display-height) 32)
-		      (- (display-width) 16) 24 32 32 32)
+  (draw-filled-rectangle 8 (- (display-height) 32) (- (display-width) 16) 24
+			 r) ;(gfx-map-rgb r g b)
+  (draw-rectangle 8 (- (display-height) 32) (- (display-width) 16) 24
+		  32) ;(gfx-map-rgb 32 32 32)
   (paint-string message 10 (- (display-height) 30) 255 255 255))
 
 

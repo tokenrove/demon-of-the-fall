@@ -91,7 +91,6 @@ values from *ACTOR-ARCHETYPES*."
     actor))
 
 
-
 (defun update-all-actors (foo)
   "Update collisions, physics, and handlers for all actors registered
 with the actor manager."
@@ -112,6 +111,34 @@ with the actor manager."
 				   actor)
 	     (funcall (actor-handler actor) id actor))
 	   *actor-map*))
+
+
+;;; XXX this function does not pay attention to box position.
+(defun update-sprite-coords (sprite position actor)
+  "Update sprite screen coordinates from world coordinates."
+  (multiple-value-bind (u v) (iso-project-point position)
+    (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
+	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
+    (setf (sprite-priority sprite) actor)))
+
+
+(defun isometric-sprite-cmp (a b)
+  (let ((adim (box-dimensions (actor-box a)))
+	(bdim (box-dimensions (actor-box b))))
+    ;; if z overlap, then do more intensive tests.
+    ;; otherwise, sort by z.
+    (if (extents-overlap-p #1=(iso-point-z (actor-position a))
+			   (+ #1# (iso-point-z adim))
+			   #2=(iso-point-z (actor-position b))
+			   (+ #2# (iso-point-z bdim)))
+	(if (extents-overlap-p #3=(iso-point-x (actor-position a))
+			       (+ #3# (iso-point-x adim))
+			       #4=(iso-point-x (actor-position b))
+			       (+ #4# (iso-point-x bdim)))
+	    (<= (iso-point-y (actor-position a))
+		(iso-point-y (actor-position b)))
+	    (>= #3# #4#))
+	(>= #1# #2#))))
 
 ;;;; Handlers
 

@@ -24,16 +24,20 @@
 		 (and (minusp ,gplace) (minusp ,gval))) (decf ,place ,gval))
 	    (t (incf ,place ,gval))))))
 
-(defmacro clampf (place value)
-  "If PLACE exceeds |VALUE|, reduce it until |PLACE| = |VALUE|."
+(defmacro clampf (place max &optional (min `(- ,max)))
+  "If PLACE exceeds MAX or MIN (MIN = -MAX if unspecified),
+reduce it to within those bounds, inclusive."
   (let ((gplace (gensym))
-	(gval (gensym)))
-    `(let ((,gval ,value)
+	(gmin (gensym))
+	(gmax (gensym)))
+    `(let ((,gmin ,min)
+	   (,gmax ,max)
 	   (,gplace ,place))
-      (when (>= (abs ,gval) (abs ,gplace))
-	(if (plusp ,gplace)
-	    (setf ,gplace ,gval)
-	    (setf ,gplace (- ,gval)))))))
+      (when (> ,gmin ,gmax) (psetf ,gmin ,gmax ,gmax ,gmin))
+      (if (> ,gplace ,gmax)
+	  (setf ,gplace ,gmax)
+	  (if (< ,gplace ,gmin)
+	      (setf ,gplace ,gmin))))))
 
 ;; Note that we could add compiler macros here to do things like
 ;; precompute constant values, and use ash instead of / when the type
@@ -68,6 +72,9 @@
 
 (defun iso-point-list (point)
   (list (iso-point-x point) (iso-point-y point) (iso-point-z point)))
+
+(defun iso-point-from-list (list)
+  (make-iso-point :x (first list) :y (second list) :z (third list)))
 
 (defun iso-point-component-function-of (axis)
   (let ((f (cond ((eql axis :x) #'iso-point-x)

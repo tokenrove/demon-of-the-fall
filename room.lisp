@@ -103,27 +103,30 @@
 
 (defparameter *tiles* (make-array (list (length *tile-archetypes*))))
 
+(defvar *floor-buffer* nil)
+;;; Note that the actors list gets eval'd -- this allows random
+;;; placement and other fun.
+(defvar *room-set* nil)
+(defvar *current-room*)
+
+
 (defclass room-tile ()
   ((archetype :accessor tile-archetype)
    (image :accessor tile-image)))
 
 (defun initialize-tiles ()
-  ;; go through  each tile, (skipping the first one), load image.
-  (do ((i 1 (1+ i))
-       (archetype (cdr *tile-archetypes*) (cdr archetype)))
+  ;; go through  each tile, load image.
+  (do ((i 0 (1+ i))
+       (archetype *tile-archetypes* (cdr archetype)))
       ((null archetype))
     (let ((tile (make-instance 'room-tile)))
-      (setf (tile-archetype tile) (car archetype)
-	    (tile-image tile) (load-image (cadr (assoc :image
-						       (cdar archetype)))
-					  t))
+      (setf (tile-archetype tile) (car archetype))
+      (setf (tile-image tile)
+	    (when (assoc :image (cdar archetype))
+	      (load-image (cadr (assoc :image (cdar archetype)))
+			  t)))
       (setf (aref *tiles* i) tile))))
 
-
-;;; Note that the actors list gets eval'd -- this allows random
-;;; placement and other fun.
-(defvar *room-set* nil)
-(defvar *current-room*)
 
 
 (defun initialize-room-data (&optional (rooms-file "rooms.sexp"))
@@ -139,7 +142,7 @@
    (name :accessor room-name)
    (player-spawn :accessor room-player-spawn)))
 
-(defun load-room (name)
+(defun load-room (name &key (spawn-actors-p t))
   (setf *wall-objects* (make-hash-table)
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
@@ -152,17 +155,16 @@
 	  (room-archetype room) archetype
 	  (room-actors room) nil)
     (setf *current-room* room)
-    ;; note evals!
     (setf (room-player-spawn room)
-	  (eval (cadr (assoc :player-spawn (cdr archetype)))))
-    (dolist (actor (cdr (assoc :actors (cdr archetype))))
-      (let ((pair (eval actor)))
-	(push (spawn-actor-from-archetype (car pair) (cadr pair))
+	  (cadr (assoc :player-spawn (cdr archetype))))
+    (when spawn-actors-p
+      (dolist (actor (cdr (assoc :actors (cdr archetype))))
+	(push (spawn-actor-from-archetype (first actor)
+					  (iso-point-from-list (second actor)))
 	      (room-actors room))))
     ;; XXX deal with physics constants here.
     (use-image-palette (tile-image (aref *tiles* 1)))
 
-    ;; XXX pre-render floor
     (paint-floor)
     (setf *room-block-actors* (make-hash-table :test 'equal))
     (dolist (block (room-blocks room))
@@ -177,10 +179,10 @@
 
 
 (defun room-redraw ()
-  (fill-background 64)
-  (blit-image *floor-buffer* nil
-	      (- (car *camera*) (half (sdl:surface-w *floor-buffer*)))
-	      (+ (cdr *camera*) (half (sdl:surface-h *floor-buffer*))))
+  (fill-background 65)
+  (blit-image *floor-buffer*
+	      (- (car *camera*) (half (surface-w *floor-buffer*)))
+	      (+ (cdr *camera*) (half (surface-h *floor-buffer*))))
   ;; draw exits
   (dolist (exit (room-exits *current-room*))
     (when (consp (first exit))
@@ -194,6 +196,8 @@
 	(draw-exit exit nil t)))))
 
 
+;; Draws triangles.  These could be more efficiently drawn as sprites,
+;; but for the moment it doesn't matter too much.
 (defun draw-exit (exit ex great)
   (multiple-value-bind (x1 y1)
       (iso-project-point #I((* +tile-size+ (+ (caar exit)
@@ -217,13 +221,19 @@
 		 (cond (ex (half +tile-size+))
 		       ((not great) (- (half +tile-size+)))
 		       (t (+ +tile-size+ (half +tile-size+)))))))
-	(draw-triangle (list x1 x2 x3) (list y1 y2 y3)
-		       0 0 0 220 0 0)))))
+
+	(incf x1 (car *camera*))
+	(incf x2 (car *camera*))
+	(incf x3 (car *camera*))
+	(incf y1 (cdr *camera*))
+	(incf y2 (cdr *camera*))
+	(incf y3 (cdr *camera*))
+	(draw-filled-triangle (list x1 x2 x3) (list y1 y2 y3) 150)
+	(draw-triangle (list x1 x2 x3) (list y1 y2 y3) 64)))))
 
 
 ;;;; FLOORS
 
-(defvar *floor-buffer* nil)
 (defun paint-floor ()
   "function PAINT-FLOOR => NIL
 
@@ -250,6 +260,7 @@ paints from back to front."
     (when *floor-buffer*
       (free-image *floor-buffer*))
     (setf *floor-buffer* (new-image-buffer h-max v-max))
+    (fill-background 0 *floor-buffer*)
 
     (paint-floor-internal floor *floor-buffer* 
 			  h-extent h-offs
@@ -274,8 +285,8 @@ paints from back to front."
 	      (decf v (cdr blit-offset))
 	      (incf u h-offs)
 	      (incf v v-offs)
-	      (blit-image (tile-image (aref *tiles* tile)) nil u v
-			  buffer))))))))
+	      (blit-image (tile-image (aref *tiles* tile)) u v
+			  :destination buffer))))))))
 
 
 (defun position-hash-key (x z)

@@ -1,0 +1,37 @@
+
+vgdev-iso-cl
+Julian Squires <tek@wiw.org> / 2004
+
+
+This project needs a better name.  Right now, I suppose it all
+qualifies as a crude hack -- there's a lot of refactoring to be done.
+This originally used CL-SDL, but I switched to my own minimal
+implementation of functions in C due to an insane number of
+FFI-related hassles I was having, particularly to do with efficiency.
+
+
+
+Caveats to level designers:
+
+* Places where there are no floor tiles cannot be crossed by the
+player, even if there are other things above the floor.  Use an
+invisible floor tile or similar instead.
+
+* You can put a big tile (like a hedge or block) in the floor, but it
+will always have the clip rectangle of a floor tile, and it won't
+animate.
+
+
+Refactorings:
+
+Lots of stuff should be more data driven:
+	event handling in editors.
+
+Reduce duplication of code:
+	collision detection/resolution.
+
+Fix comments, function documentation, and document any assumptions.
+
+Physical structure of the code needs to be rearranged to better
+reflect dependencies, so that initial load of the code doesn't have so
+many warnings.

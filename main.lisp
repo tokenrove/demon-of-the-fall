@@ -27,16 +27,17 @@ given ROOM.  Note that the display must already have been created."
   (create-actor-manager)
   (wipe-events)
 
-  (let ((fps-count (cons 0 (sdl:get-ticks))))
+  (let ((fps-count (cons 0 (timer-get-ticks))))
     (load-default-font "spn.ttf" 24)
     (load-room starting-room)
 
     ;; spawn the player, have the camera follow it.
     (setf *camera-follow*
 	  (spawn-actor-from-archetype :peter
-				      (room-player-spawn *current-room*)))
+				      (iso-point-from-list
+				       (room-player-spawn *current-room*))))
     (loop
-     (sync-start-frame)
+     (timer-start-frame 20)
      (event-update)
      (when (event-pressedp +ev-quit+)
        (return))
@@ -67,13 +68,13 @@ given ROOM.  Note that the display must already have been created."
      (paint-osd)
      (refresh-display)
 
-     (sync-end-frame)
+     (timer-end-frame)
      (incf (car fps-count)))
 
     (destroy-font)
     (destroy-sprite-manager)
     (format t "~&Frames-per-second: ~D"
-	    (float (* 1000 (/ (car fps-count) (- (sdl:get-ticks)
+	    (float (* 1000 (/ (car fps-count) (- (timer-get-ticks)
 						 (cdr fps-count))))))))
 
 

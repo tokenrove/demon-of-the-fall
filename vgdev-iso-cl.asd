@@ -4,13 +4,13 @@
 (in-package #:vgdev-iso-cl-system)
 
 (defsystem vgdev-iso-cl
-    :depends-on (:uffi :sdl :sdl-img :sdl-ttf :anaphora)
+    :depends-on (:uffi :anaphora :osicat)
     :components
     ((:file "package")
      ;; low-level
-     (:file "graphics" :depends-on ("package"))
-     (:file "event" :depends-on ("package"))
-     (:file "timer" :depends-on ("package"))
+     (:file "ffi" :depends-on ("package"))
+     (:file "graphics" :depends-on ("package" "ffi"))
+     (:file "event" :depends-on ("package" "ffi"))
      ;; middle-level
      (:file "math" :depends-on ("package" "graphics"))
      (:file "font" :depends-on ("package" "graphics"))
@@ -22,6 +22,6 @@
      (:file "physics" :depends-on ("actor" "math"))
      (:file "room" :depends-on ("package" "graphics" "math"))
      (:file "main" :depends-on ("actor" "room" "graphics" "event"
-					"timer" "sprite" "font" "math"))
+					"sprite" "font" "math"))
      (:file "maze" :depends-on ("package"))
      (:file "room-editor" :depends-on ("main"))))

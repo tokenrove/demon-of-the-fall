@@ -262,6 +262,6 @@ actor."
   (let ((alice-box (box-translate (actor-box alice)
 				  (actor-position alice)))
 	(bob-box (box-translate (actor-box bob)
-				  (actor-position bob))))
+				(actor-position bob))))
     (boxes-overlap-p alice-box bob-box)))
 
