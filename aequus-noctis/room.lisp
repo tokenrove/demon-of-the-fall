@@ -131,6 +131,8 @@
   (with-open-file (stream rooms-file)
     (setf *room-set* (read stream))))
 
+;;; XXX the idea of player-spawn, exits, and name are going to be moved to
+;;; the scenario logic.
 (defclass iso-room ()
   ((floor :accessor room-floor)
    (blocks :accessor room-blocks)
@@ -146,11 +148,15 @@ to avoid conflict with the CL symbol ROOM, but all of its associated
 methods drop the ISO qualifier."))
 
 (defun load-room (name sprite-manager &key (spawn-actors-p t))
+  "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
+Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
+ (based on SPAWN-ACTORS-P) spawns actors associated with room."
   (setf *wall-objects* (make-hash-table)
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
   (let ((room (make-instance 'iso-room))
 	(archetype (assoc name *room-set*)))
+    (assert archetype () "Couldn't find room ~A." name)
     (setf (room-floor room) (cdr (assoc :floor (cdr archetype)))
 	  (room-exits room) (cdr (assoc :exits (cdr archetype)))
 	  (room-blocks room) (cdr (assoc :blocks (cdr archetype)))
@@ -247,7 +253,7 @@ methods drop the ISO qualifier."))
 ;;;; FLOORS
 
 (defun paint-floor ()
-  "function PAINT-FLOOR => NIL
+  "function PAINT-FLOOR
 
 Paint floor tiles according to room.  Tiles at +TILE-SIZE+ intervals;
 paints from back to front."
@@ -382,3 +388,23 @@ paints from back to front."
 		      :dimensions (make-iso-point :x w :y h :z d))))
     block))
 
+
+;;; XXX this will go elsewhere
+
+(defun check-room-change (sprite-manager)
+  (when (plusp *exit-counter*) (decf *exit-counter*))
+  (when (and *magic-exit-hack* (zerop *exit-counter*))
+    (let ((old-y (iso-point-y (actor-position *camera-follow*))))
+      (create-actor-manager)
+      (load-room (car *magic-exit-hack*) sprite-manager)
+      (setf *camera-follow*
+	    (spawn-actor-from-archetype :peter
+					#I((* (caadr *magic-exit-hack*)
+					      +tile-size+)
+					   old-y
+					   (* (cdadr *magic-exit-hack*)
+					      +tile-size+))
+					sprite-manager))
+      (setf *exit-counter* 61)
+      (setf *magic-exit-hack* nil))
+    t))

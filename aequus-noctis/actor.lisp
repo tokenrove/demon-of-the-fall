@@ -146,25 +146,6 @@ with the actor manager."
 	(>= #1# #2#))))
 
 
-(defun check-room-change (sprite-manager)
-  (when (plusp *exit-counter*) (decf *exit-counter*))
-  (when (and *magic-exit-hack* (zerop *exit-counter*))
-    (let ((old-y (iso-point-y (actor-position *camera-follow*))))
-      (create-actor-manager)
-      (load-room sprite-manager (car *magic-exit-hack*))
-      (setf *camera-follow*
-	    (spawn-actor-from-archetype :peter
-					#I((* (caadr *magic-exit-hack*)
-					      +tile-size+)
-					   old-y
-					   (* (cdadr *magic-exit-hack*)
-					      +tile-size+))
-					sprite-manager))
-      (setf *exit-counter* 61)
-      (setf *magic-exit-hack* nil))
-    t))
-
-
 ;;;; Handlers
 
 (defun create-do-nothing-handler ()

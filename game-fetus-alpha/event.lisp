@@ -24,6 +24,7 @@
 
   ;; SDL keysym names; really, I'd rather grovel them, but for the
   ;; moment, this works.
+  (defconstant +keysym-backspace+ 8)
   (defconstant +keysym-escape+ 27)
   (defconstant +keysym-q+ 113)
   (defconstant +keysym-x+ 120)
@@ -36,14 +37,14 @@
   ;; Eventually we're going to need to support ideas like having more
   ;; than one controller.
   (let ((hash (make-hash-table)))
-    (dolist (x  '((+keysym-escape+ . #.+ev-quit+)
-		  (+keysym-q+ . #.+ev-quit+)
-		  (+keysym-up+ . #.+ev-up+)
-		  (+keysym-down+ . #.+ev-down+)
-		  (+keysym-left+ . #.+ev-left+)
-		  (+keysym-right+ . #.+ev-right+)
-		  (+keysym-z+ . #.+ev-button-a+)
-		  (+keysym-x+ . #.+ev-button-b+)))
+    (dolist (x  (list (cons +keysym-escape+ +ev-quit+)
+		      (cons +keysym-q+ +ev-quit+)
+		      (cons +keysym-up+ +ev-up+)
+		      (cons +keysym-down+ +ev-down+)
+		      (cons +keysym-left+ +ev-left+)
+		      (cons +keysym-right+ +ev-right+)
+		      (cons +keysym-z+ +ev-button-a+)
+		      (cons +keysym-x+ +ev-button-b+)))
       (setf (gethash (car x) hash) (cdr x)))
 
     (defparameter *xlate-symbol->map-idx* hash

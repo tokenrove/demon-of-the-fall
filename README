@@ -11,6 +11,19 @@ switched to my own minimal implementation of functions in C due to an
 insane number of FFI-related hassles I was having, particularly to do
 with efficiency.
 
+Generally, to try it out, you should:
+% (cd game-fetus-alpha && make)
+Fire up your lisp of choice, from the base directory, and:
+> (asdf:oos 'asdf:compile-op :demon-of-the-fall)
+> (asdf:oos 'asdf:load-op :demon-of-the-fall)
+> (in-package :demon)
+> (first-init)
+> (in-game-loop :test-room-a)
+... should bring you to a test room where you can mess around.
+
+You should also be able to:
+> (equinox:room-editor :test-room-a)
+
 
 Status of support for various lisp implementations:
 

@@ -24,13 +24,15 @@
     (refresh-display)
     (let ((event (get-key-event)))
       (cond ((= event 13) (return string))
-	    ((< 31 event 126)
+	    ((<= (char-code #\Space) event (char-code #\~))
 	     (let ((char (code-char event)))
 	       (when symbol-mode
 		 (setf char (char-upcase char))
 		 (when (eql char #\Space) (setf char #\-)))
 	       (vector-push-extend char string)))
-	    ((= event 8) (vector-pop string))))))
+	    ((= event +keysym-backspace+)
+	     (unless (zerop (fill-pointer string))
+	       (vector-pop string)))))))
 
 
 (defun editor-number-prompt (font message)

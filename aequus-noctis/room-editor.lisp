@@ -169,6 +169,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	       (setf *sprite-manager* (fetus:create-sprite-manager
 				       #'isometric-sprite-cmp))
 	       (load-room dest-room *sprite-manager* :spawn-actors-p nil)
+	       (setf slice-cursor (make-iso-point))
 	       (editor-osd-display-message "Change to room ~A."
 					   dest-room)))
 
@@ -282,7 +283,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 
 (defun palette-mode (set image-fn name-fn)
   (do ((cursor (cons 0 0))
-       (max-row (/ (length set) 3))
+       (max-row (ceiling (length set) 3))
        (max-column 3))
       (nil)
     (fetus:fill-background 255)

@@ -120,18 +120,19 @@ COLOR, on SURFACE."
 
   (ll-gfx-unlock-surface surface))
 
-;; Internal macro; used in DRAW-LINE and HELPER-DRAW-LINE.
-(defmacro inner-draw-line (swap-p &body plot-body)
-  `(progn
-     (setf d (the fixnum (ash (- ,@(if swap-p '(ax ay) '(ay ax))) -1)))
-     (loop
-	,@plot-body
-	(when (= ,@(if swap-p '(p-y q-y) '(p-x q-x))) (return))
-	(when (>= d 0)
-	  (incf ,@(if swap-p '(p-x sign-x) '(p-y sign-y)))
-	  (decf d ,(if swap-p 'ay 'ax)))
-	(incf ,@(if swap-p '(p-y sign-y) '(p-x sign-x)))
-	(incf d ,(if swap-p 'ax 'ay)))))
+(eval-when (:compile-toplevel)
+  ;; Internal macro; used in DRAW-LINE and HELPER-DRAW-LINE.
+  (defmacro inner-draw-line (swap-p &body plot-body)
+    `(progn
+       (setf d (the fixnum (ash (- ,@(if swap-p '(ax ay) '(ay ax))) -1)))
+       (loop
+	  ,@plot-body
+	  (when (= ,@(if swap-p '(p-y q-y) '(p-x q-x))) (return))
+	  (when (>= d 0)
+	    (incf ,@(if swap-p '(p-x sign-x) '(p-y sign-y)))
+	    (decf d ,(if swap-p 'ay 'ax)))
+	  (incf ,@(if swap-p '(p-y sign-y) '(p-x sign-x)))
+	  (incf d ,(if swap-p 'ax 'ay))))))
 
 
 (defun draw-rectangle (x y w h color &optional (surface *vbuffer*))
