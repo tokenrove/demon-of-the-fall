@@ -43,7 +43,8 @@
   (multiple-value-bind (u v) (iso-project-point position)
     (setf (sprite-x sprite) u
 	  (sprite-y sprite) v
-	  (sprite-priority sprite) (iso-point-z position))))
+	  (sprite-priority sprite) (- (iso-point-z position)
+				      (iso-point-y position)))))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."

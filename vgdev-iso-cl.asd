@@ -11,7 +11,7 @@
      (:file "event" :depends-on ("package"))
      (:file "timer" :depends-on ("package"))
      ;; middle-level
-     (:file "math" :depends-on ("package"))
+     (:file "math" :depends-on ("package" "graphics"))
      (:file "font" :depends-on ("package" "graphics"))
      (:file "sprite" :depends-on ("package" "graphics" "math"))
      ;; high-level logic

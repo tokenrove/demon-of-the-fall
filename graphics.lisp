@@ -85,7 +85,8 @@
 
 (defun blit-image (img src-rect x y)
   (sgum:with-foreign-objects ((dst-rect sdl:rect))
-    (rectangle-set dst-rect x (- y (sdl:surface-h img)) 0 0)
+    (rectangle-set dst-rect (+ x (/ (sdl:surface-w img) 2))
+		   (- y (sdl:surface-h img)) 0 0)
     (sdl:blit-surface img src-rect *vbuffer* dst-rect)))
 
 ;;; Y'know, in Double Draggin', I implemented Wu-Rokne-Wyvill line
