@@ -33,6 +33,11 @@ game world.")
   "Actor unique ID counter, should always contain an ID which is not
 currently in use by any live actors.")
 
+
+(defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
+  (with-open-file (stream archetypes-file)
+    (setf *actor-archetypes* (read stream))))
+
 (defun create-actor-manager ()
   "function CREATE-ACTOR-MANAGER
 
@@ -55,77 +60,7 @@ Register actor with actor manager."
 Remove the actor specified by id from the actor manager."
   (remhash id *actor-map*))
 
-(defparameter *actor-archetypes*
-  '((:glen 
-     (:sprite
-      (:image "ret-data/petsheet.pcx")
-      (:blit-offset (12 . 0))
-      (:frames ((0 0 24 48)
-		(24 0 24 48)
-		(48 0 24 48)
-		(72 0 24 48)
-		(96 0 24 48)
-		(120 0 24 48)
-		(144 0 24 48)
-		(168 0 24 48)
-		(192 0 24 48)))
-      (:animations ((:default (0 . 60))
-		    (:walk-east (1 . 5)
-				(2 . 5)
-				(3 . 5)
-				(2 . 5))
-		    (:stand-east (0 . 60))
-		    (:stand-north (4 . 60))
-		    (:walk-north (5 . 5)
-				 (6 . 5)
-				 (7 . 5)
-				 (6 . 5)))))
-     (:box
-      (0 0 0)
-      (24 36 24))
-     (:handler
-      create-human-input-handler)
-     (:contact
-      player-contact-handler))
-    (:push-block
-     (:sprite
-      (:image "ret-data/block.pcx")
-      (:blit-offset (32 . 0))
-      (:frames ((0 0 64 64)))
-      (:animations ((:default (0 . 60)))))
-     (:handler
-      create-do-nothing-handler)
-     (:contact
-      pushable-block-handler)
-     (:box
-      (0 0 0)
-      (64 32 64)))
-    (:float-block
-     (:sprite
-      (:image "ret-data/bl-cushi.pcx")
-      (:blit-offset (32 . 0))
-      (:frames ((0 0 64 64)))
-      (:animations ((:default (0 . 60)))))
-     (:handler
-      create-floating-block-handler)
-     (:contact
-      pushable-block-handler)
-     (:box
-      (0 0 0)
-      (64 32 64)))
-    (:floor-block
-     (:sprite
-      (:image "ret-data/fl-check.pcx")
-      (:blit-offset (32 . 0))
-      (:frames ((0 0 64 40)))
-      (:animations ((:default (0 . 60)))))
-     (:handler
-      create-floating-block-handler)
-     (:contact
-      pushable-block-handler)
-     (:box
-      (0 0 0)
-      (64 32 40))))
+(defvar *actor-archetypes* nil
   "The actor archetypes table, which defines the default values for
 many parameters of an actor.")
 
@@ -137,23 +72,20 @@ Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
   (let ((actor (make-instance 'actor))
 	(archetype (cdr (find name *actor-archetypes* :key #'car))))
-    (setf (slot-value actor 'type) name)
-    (setf (actor-position actor) position)
-    (setf (actor-handler actor)
-	  (funcall (cadr (assoc :handler archetype))))
-    (setf (actor-contact-surface actor) nil)
-    (setf (actor-facing actor) :east)
-    (setf (actor-sprite actor)
-	  (new-sprite-from-alist (cdr (assoc :sprite archetype))))
+    (when (null archetype)
+      (error "archetype ~A not found" name))
+    (setf (slot-value actor 'type) name
+	  (actor-position actor) position
+	  (actor-handler actor) (funcall (cadr (assoc :handler archetype)))
+	  (actor-contact-surface actor) nil
+	  (actor-facing actor) :east
+	  (actor-sprite actor) (new-sprite-from-alist
+				(cdr (assoc :sprite archetype))))
     (add-sprite-to-list (actor-sprite actor))
-    (let ((box (cdr (assoc :box archetype))))
+    (destructuring-bind ((x y z) (w h d)) (cdr (assoc :box archetype))
       (setf (actor-box actor)
-	    (make-box :position (make-iso-point :x (first (first box))
-						:y (second (first box))
-						:z (third (first box)))
-		    :dimensions (make-iso-point :x (first (second box))
-						:y (second (second box))
-						:z (third (second box))))))
+	    (make-box :position (make-iso-point :x x :y y :z z)
+		    :dimensions (make-iso-point :x w :y h :z d))))
     (setf (actor-velocity actor) (make-iso-point))
     (manage-actor actor)
     actor))
@@ -207,19 +139,26 @@ with the actor manager."
 events."
   (lambda (id player)
     (declare (ignore id))
-    (when (event-pressedp :up)
+    (when (event-pressedp +ev-up+)
       (apply-impulse player :x 0.5)
       (set-sprite-animation (actor-sprite player) :walk-north))
-    (when (event-pressedp :down)
-      (apply-impulse player :x -0.5))
-    (when (event-pressedp :left)
-      (apply-impulse player :z 0.5))
-    (when (event-pressedp :right)
+    (when (event-pressedp +ev-down+)
+      (apply-impulse player :x -0.5)
+      (set-sprite-animation (actor-sprite player) :walk-south))
+    (when (event-pressedp +ev-left+)
+      (apply-impulse player :z 0.5)
+      (set-sprite-animation (actor-sprite player) :walk-west))
+    (when (event-pressedp +ev-right+)
       (apply-impulse player :z -0.5)
       (set-sprite-animation (actor-sprite player) :walk-east))
-    (when (and (event-pressedp :jump)
+    (when (and (event-pressedp +ev-jump+)
 	       (actor-contact-surface player))
       (apply-impulse player :y 6))))
+
+(defun create-monster-handler ()
+  "Create an actor handler which roves around in a sinister manner."
+  ;; XXX unimplemented.
+  (lambda (id actor) (declare (ignore id actor))))
 
 
 (defun pushable-block-handler (us them face impulse)
@@ -230,12 +169,19 @@ events."
 (defun player-contact-handler (us them face impulse)
   (declare (ignore them))
   (decf (iso-point-component face (actor-velocity us))
-	(iso-point-component face impulse))))
+	(iso-point-component face impulse)))
 
-;; (defun monster-contact-handler ()
+(defun monster-contact-handler (us them face impulse)
+  (declare (ignore us them face impulse))
 ;;    if something is on top of us,
 ;;        sink its horizontal velocities by our friction,
 ;;        add our velocity to its velocity.
 ;;    if we're touching the player at all,
 ;;        kill them.
+  )
+
+(defun loot-contact-handler (us them face impulse)
+  (declare (ignore us them face impulse))
+  ;; if we're touching the player, they can have us.
+  )
 

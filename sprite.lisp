@@ -52,8 +52,6 @@ priority and screen position."))
 (defun update-sprite-coords (sprite position actor)
   "Update sprite screen coordinates from world coordinates."
   (multiple-value-bind (u v) (iso-project-point position)
-    (incf u (car *camera*))
-    (incf v (cdr *camera*))
     (setf (sprite-x sprite) (- u (car (sprite-blit-offset sprite)))
 	  (sprite-y sprite) (- v (cdr (sprite-blit-offset sprite))))
     (setf (sprite-priority sprite) actor)))
@@ -63,14 +61,17 @@ priority and screen position."))
   ;; XXX incomplete, should parse animations
   ;; get current frame
   (let ((flist (cdr (assoc (sprite-cur-anim sprite)
-			   (sprite-animations sprite)))))
+			   (sprite-animations sprite))))
+	(u (sprite-x sprite))
+	(v (sprite-y sprite)))
     (multiple-value-bind (x y w h)
 	(values-list (nth (car (nth (sprite-cur-frame sprite) flist))
 			  (sprite-frames sprite)))
       (sgum:with-foreign-objects ((src-rect sdl:rect))
 	(rectangle-set src-rect x y w h)
-	(blit-image (sprite-image sprite) src-rect (sprite-x sprite)
-		    (sprite-y sprite))))
+	(incf u (car *camera*))
+	(incf v (cdr *camera*))
+	(blit-image (sprite-image sprite) src-rect u v)))
     ;; update frame
     (decf (sprite-frame-counter sprite))
     (when (minusp (sprite-frame-counter sprite))
@@ -100,6 +101,9 @@ priority and screen position."))
 
 (defun add-sprite-to-list (sprite)
   (push sprite *global-sprite-list*))
+
+(defun remove-sprite (sprite)
+  (setf *global-sprite-list* (remove sprite *global-sprite-list*)))
 
 (defun update-all-sprites ()
   ;; XXX could be a lot more efficient if we cared.

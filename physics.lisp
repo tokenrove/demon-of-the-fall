@@ -10,9 +10,9 @@
 (in-package :vgdev-iso-cl)
 
 ;;; XXX Each of these constants is totally arbitrary.
-(defparameter *air-friction* 0.1
+(defparameter *air-friction* 0.25
   "Resistance against actors while in the air.")
-(defparameter *ground-friction* 0.5
+(defparameter *ground-friction* 0.25
   "Friction on the floor.  Note that this parameter will not be here
 forever as friction becomes delegated to surfaces.")
 (defparameter *gravity* -0.5
@@ -44,7 +44,8 @@ actor."
 
        ;; in the air.
        (progn
-	 (sinkf (iso-point-y (actor-velocity a)) *air-friction*)
+	 (sinkf (iso-point-x (actor-velocity a)) *air-friction*)
+	 (sinkf (iso-point-z (actor-velocity a)) *air-friction*)
 	 (incf (iso-point-y (actor-velocity a)) *gravity*))))
 
 
@@ -58,8 +59,8 @@ actor."
 	     (when (and (not (eql alice bob)) (penetrating-p alice bob))
 	       (multiple-value-bind (impulse lsa not-lsa)
 		   (resolve-collision alice bob)
-		 (apply-impulse alice lsa
-				(iso-point-component lsa impulse))
+		 (incf (iso-point-component lsa (actor-velocity alice))
+		       (iso-point-component lsa impulse))
 		 (dolist (axis not-lsa)
 		   (decf (iso-point-component axis (actor-position alice))
 			 (iso-point-component axis impulse)))
@@ -79,68 +80,105 @@ actor."
 
 
 (defun room-collision-detection (alice)
+  (maphash
+   (lambda (key bob)
+     (declare (ignore key))
+     (when (penetrating-p alice bob)
+       (multiple-value-bind (impulse lsa not-lsa)
+	   (resolve-collision alice bob)
+	 (when lsa
+	   (incf (iso-point-component lsa (actor-velocity alice))
+		 (iso-point-component lsa impulse)))
+	 (dolist (axis not-lsa)
+	   (decf (iso-point-component axis (actor-position alice))
+		 (iso-point-component axis impulse)))
+      
+	 ;; when lsa is :y...
+	 (when (and (eql lsa :y)
+		    (> (iso-point-y (actor-position alice))
+		       (iso-point-y (actor-position bob))))
+	   (setf (actor-contact-surface alice) bob)))))
+   *room-block-actors*)
+
   (let ((w (ceiling (iso-point-x (box-dimensions (actor-box alice)))
 		    +tile-size+))
 	(d (ceiling (iso-point-z (box-dimensions (actor-box alice)))
-		    +tile-size+))
-	(slice 0))
+		    +tile-size+)))
     (do* ((base-z (floor (iso-point-z (actor-position alice)) +tile-size+))
 	  (z base-z (1+ z)))
 	 ((> z (+ base-z d)))
       (do* ((base-x (floor (iso-point-x (actor-position alice)) +tile-size+))
 	    (x base-x (1+ x)))
 	   ((> x (+ base-x w)))
-	(if (plusp slice)
-	    (try-slice-collision alice slice x z)
-	    (try-floor-collision alice x z))))))
+	(try-border-collision alice x z)))))
+	
+(defun check-exit (x z)
+  (when (minusp x) (setf x 0))
+  (when (minusp z) (setf z 0))
+  (when (>= x (1- (room-width))) (setf x (1- (room-width))))
+  (when (>= z (1- (room-depth))) (setf z (1- (room-depth))))
+
+  (dolist (exit (room-exits *current-room*))
+    (let ((this-side (first exit)))
+      (when (and (consp this-side)
+		 (= x (car this-side))
+		 (= z (cdr this-side)))
+	(when (zerop *exit-counter*)
+	  (setf *magic-exit-hack* (list (second exit) (third exit))))))))
 
 
-(defun try-slice-collision (alice slice x z)
-  nil)
+(defun try-border-collision (alice x z)
+  (when (or (minusp x) (minusp z)
+	    (>= x (room-width))
+	    (>= z (room-depth))
+	    (= (aref (aref (room-floor *current-room*) z) x) 0))
+    (let ((wall-obj (make-wall-object x z)))
+      (when (penetrating-p alice wall-obj)
+	(multiple-value-bind (impulse lsa not-lsa)
+	    (resolve-collision alice wall-obj)
+	  (check-exit x z)
+	  (assert lsa
+		  (alice wall-obj)
+		  "No separating axis between ~A and ~A!"
+		  alice wall-obj)
+	  (incf (iso-point-component lsa (actor-velocity alice))
+		(iso-point-component lsa impulse))
+	  (dolist (axis not-lsa)
+	    (decf (iso-point-component axis (actor-position alice))
+		  (iso-point-component axis impulse)))))))
 
-(defun make-wall-object (x z)
-  (let ((wall (make-instance 'actor)))
-    (setf (actor-position wall) #I((* x +tile-size+) 0
-				   (* z +tile-size+)))
-    (setf (actor-box wall)
-	  (make-box :position #I(0 0 0)
-		    :dimensions #I(+tile-size+
-				   *room-highest-point*
-				   +tile-size+)))
-    wall))
+  (when (<= (iso-point-y (actor-position alice)) *room-lowest-point*)
+    (let ((floor-obj (make-floor-object x z)))
+      (when (penetrating-p alice floor-obj)
+	(multiple-value-bind (impulse lsa not-lsa)
+	    (resolve-collision alice floor-obj)
+	  (assert lsa
+		  (alice floor-obj)
+		  "No separating axis between ~A and ~A!"
+		  alice floor-obj)
+	  (incf (iso-point-component lsa (actor-velocity alice))
+		(iso-point-component lsa impulse))
+	  (dolist (axis not-lsa)
+	    (decf (iso-point-component axis (actor-position alice))
+		  (iso-point-component axis impulse))))
+	(setf (actor-contact-surface alice) floor-obj))))
 
-(defun make-floor-object (x z)
-  (let ((floor (make-instance 'actor)))
-    (setf (actor-position floor) #I((* x +tile-size+) -16
-				   (* z +tile-size+)))
-    (setf (actor-box floor)
-	  (make-box :position #I(0 0 0)
-		    :dimensions #I(+tile-size+
-				   16
-				   +tile-size+)))
-    floor))
-
-(defun try-floor-collision (alice x z)
-  (if (or (minusp x) (minusp z))
-      (let ((wall-obj (make-wall-object x z)))
-	(when (penetrating-p alice wall-obj)
-	  (multiple-value-bind (impulse lsa not-lsa)
-	      (resolve-collision alice wall-obj)
-	    (incf (iso-point-component lsa (actor-velocity alice))
-		  (iso-point-component lsa impulse))
-	    (dolist (axis not-lsa)
-	      (decf (iso-point-component axis (actor-position alice))
-		    (iso-point-component axis impulse))))))
-      (let ((floor-obj (make-floor-object x z)))
-	(when (penetrating-p alice floor-obj)
-	  (multiple-value-bind (impulse lsa not-lsa)
-	      (resolve-collision alice floor-obj)
-	    (incf (iso-point-component lsa (actor-velocity alice))
-		  (iso-point-component lsa impulse))
-	    (dolist (axis not-lsa)
-	      (decf (iso-point-component axis (actor-position alice))
-		    (iso-point-component axis impulse))))
-	  (setf (actor-contact-surface alice) floor-obj)))))
+  (when (>= (+ (iso-point-y (actor-position alice))
+	       (iso-point-y (box-dimensions (actor-box alice))))
+	    *room-highest-point*)
+    (let ((ceiling-obj (make-ceiling-object x z)))
+      (when (penetrating-p alice ceiling-obj)
+	(multiple-value-bind (impulse lsa not-lsa)
+	    (resolve-collision alice ceiling-obj)
+	  (assert lsa
+		  (alice ceiling-obj)
+		  "No separating axis between ~A and ~A!"
+		  alice ceiling-obj)
+	  (incf (iso-point-component lsa (actor-velocity alice))
+		(iso-point-component lsa impulse))
+	  (dolist (axis not-lsa)
+	    (decf (iso-point-component axis (actor-position alice))
+		  (iso-point-component axis impulse))))))))
 
 
 (defun sign-of (v)
@@ -186,15 +224,17 @@ actor."
 		   (decf (iso-point-component axis impulse) it))))))
     
     (let (lsa not-lsa)
-      (dolist (axis '(:x :y :z))
+      (dolist (axis '(:x :z :y))	; note order: prefer y to z or x.
 	(let* ((f (iso-point-component-function-of axis))
 	       (amin (funcall f (actor-position alice)))
 	       (bmin (funcall f (actor-position bob))))
-	  (if (extents-overlap-p
+	  (unless (extents-overlap-p
 	       amin (+ amin (funcall f (box-dimensions (actor-box alice))))
 	       bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
-	      (push axis not-lsa)
-	      (setf lsa axis))))
+	    (setf lsa axis))))
+      ;; sort of a temporary hack to try to fix problem where two LSAs
+      ;; are set.
+      (dolist (axis '(:x :y :z)) (unless (eql axis lsa) (push axis not-lsa)))
       (values impulse lsa not-lsa))))
 
 

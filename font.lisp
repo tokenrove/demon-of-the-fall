@@ -16,6 +16,9 @@
   "This must be called before any other font routines are used."
   (sdl-ttf:init))
 
+(defun text-size (string)
+  (cl-sdl-ttf:size-text *default-font* string))
+
 (defun paint-string (string x y r g b)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
   (cl-sdl-ttf:with-solid-text (sface *default-font* string r g b)
@@ -24,6 +27,16 @@
       (setf (sdl:rect-x rect) x
 	    (sdl:rect-y rect) y)
       (sdl:blit-surface sface nil *vbuffer* rect))))
+
+(defun paint-blended-string (string x y r g b)
+  "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
+  (with-foreign-object (fg 'sdl:color)
+    (setf (sdl:color-r fg) r (sdl:color-g fg) g (sdl:color-b fg) b)
+    (let ((sface (sgum:maybe-null->nil
+		  (sdl-ttf:render-text-blended *default-font* string fg))))
+      (when sface
+	(blit-image sface nil x (+ y (sdl:surface-h sface)))
+	(sdl:free-surface sface))))))
 
 (defun destroy-font ()
   "Frees *DEFAULT-FONT* appropriately."

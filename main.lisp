@@ -6,75 +6,62 @@
 
 (in-package :vgdev-iso-cl)
 
-(defun lil-demo ()
-  (font-init)
-  (load-default-font "Jagged Dreams.ttf" 18)
-  (fill-background 255)
-  (update-all-actors 20)
-  (maphash #'(lambda (id actor)
-	       (declare (ignore id))
-	       (draw-back-of-actor-box actor))
-	   *actor-map*)
-  (update-all-sprites)
-  (maphash #'(lambda (id actor)
-	       (declare (ignore id))
-	       (draw-front-of-actor-box actor))
-	   *actor-map*)
-
-  (multiple-value-bind (x y z)
-      (iso-project-point (actor-position (gethash 0 *actor-map*)))
-    (incf x (car *camera*))
-    (incf y (cdr *camera*))
-    (paint-string (format nil "~A" z) 10 10 255 255 255)
-    (sdl:draw-line *vbuffer* x y x y 255 10 10))
-
-  (multiple-value-bind (x y z)
-      (iso-project-point #I(64 0 128))
-    (multiple-value-bind (x2 y2 z2)
-	(iso-project-point #I(64 0 32))
-      (incf x (car *camera*))
-      (incf y (cdr *camera*))
-      (incf x2 (car *camera*))
-      (incf y2 (cdr *camera*))
-      (paint-string (format nil "~A ~A (~A)" z z2 (- z z2)) 10 30 255 255 255)
-      (sdl:draw-line *vbuffer* x y x2 y2 255 255 255)))
-
-  (refresh-display)
-  (destroy-font))
-
-(defvar *debug-projections* nil)
 (defvar *camera* (cons 100 140))
+(defvar *camera-follow*)
+(defvar *magic-exit-hack* nil)
+(defvar *exit-counter* 0)
 
-(defun demo-loop ()
-  "Do a little interactive demo-loop on the current display.  Note
-that the display must already have been created."
+(defun first-init ()
+  "Called when we first start."
+  (create-display)
+  (initialize-actor-data)
+  (initialize-room-data))
+
+
+(defun in-game-loop (starting-room)
+  "Interactive game-loop on the current display, starting from the
+given ROOM.  Note that the display must already have been created."
   (font-init)
+  (initialize-tiles)
   (create-sprite-manager)
   (create-actor-manager)
+  (wipe-events)
 
-  (let ((floor-img (load-image "ret-data/fl-check.pcx" t))
-	(fps-count (cons 0 (sdl:get-ticks))))
+  (let ((fps-count (cons 0 (sdl:get-ticks))))
+    (load-default-font "spn.ttf" 24)
+    (load-room starting-room)
 
-    (load-default-font "Jagged Dreams.ttf" 18)
-
-    ;; XXX this stuff will all go in level-loading
-    (use-image-palette floor-img)
-    (spawn-actor-from-archetype :glen #I(64 0 0))
-    (spawn-actor-from-archetype :push-block #I(224 0 94))
-    (spawn-actor-from-archetype :float-block #I(224 0 166))
-
+    ;; spawn the player, have the camera follow it.
+    (setf *camera-follow*
+	  (spawn-actor-from-archetype :peter
+				      (room-player-spawn *current-room*)))
     (loop
      (sync-start-frame)
      (event-update)
-     (when (event-pressedp :quit)
+     (when (event-pressedp +ev-quit+)
        (return))
 
-     ;; Background
-     ;; XXX replace with room drawing
-     (fill-background 0)
-     #+nil(paint-floor floor-img)
+     (when (and *magic-exit-hack* (zerop *exit-counter*))
+       (let ((old-y (iso-point-y (actor-position *camera-follow*))))
+	 (destroy-sprite-manager)
+	 (create-sprite-manager)
+	 (create-actor-manager)
+	 (load-room (car *magic-exit-hack*))
+	 (setf *camera-follow*
+	       (spawn-actor-from-archetype :peter
+					   #I((* (caadr *magic-exit-hack*)
+						 +tile-size+)
+					      old-y
+					      (* (cdadr *magic-exit-hack*)
+						 +tile-size+))))
+	 (setf *exit-counter* 61)
+	 (setf *magic-exit-hack* nil)))
+
+     (when (plusp *exit-counter*) (decf *exit-counter*))
 
      (update-all-actors 20)
+     (update-camera *camera-follow*)
+     (room-redraw)
      (update-all-sprites)
 
      (paint-osd)
@@ -84,9 +71,16 @@ that the display must already have been created."
      (incf (car fps-count)))
 
     (destroy-font)
-    (free-image floor-img)
     (destroy-sprite-manager)
     (format t "~&Frames-per-second: ~D"
 	    (float (* 1000 (/ (car fps-count) (- (sdl:get-ticks)
 						 (cdr fps-count))))))))
 
+
+(defun update-camera (actor)
+  (multiple-value-bind (x y)
+      (iso-project-point (actor-position actor))
+    (decf x (half (display-width)))
+    (decf y (half (display-height)))
+    (setf (car *camera*) (- x)
+	  (cdr *camera*) (- y))))

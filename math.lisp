@@ -66,6 +66,9 @@
   (format stream "#I(~A ~A ~A)" (iso-point-x point)
 	  (iso-point-y point) (iso-point-z point)))
 
+(defun iso-point-list (point)
+  (list (iso-point-x point) (iso-point-y point) (iso-point-z point)))
+
 (defun iso-point-component-function-of (axis)
   (let ((f (cond ((eql axis :x) #'iso-point-x)
 		 ((eql axis :y) #'iso-point-y)
@@ -91,18 +94,15 @@
 
 (defun iso-project-point (p)
   "Project a world coordinate (3D) point onto screen coordinates.
-Returns three values, X and Y in screen coordinates, and a ``real'' Z
-value.  This is *before* camera positioning."
+Returns two values, X and Y in screen coordinates.  This is *before*
+camera positioning."
   (let ((sx (- (half (iso-point-x p)) (half (iso-point-z p))))
 	(sy (- (half (display-height))
 	       (+ (iso-point-y p)
 		  (quarter (iso-point-x p))
-		  (quarter (iso-point-z p)))))
-	(sz (- (+ (quarter (iso-point-y p))
-		  (+ (half (iso-point-x p))
-		     (half (iso-point-z p)))))))
+		  (quarter (iso-point-z p))))))
 ;    (decf sy (half (display-height)))
-    (values (round sx) (round sy) (round sz))))
+    (values (round sx) (round sy))))
 
 ;;; XXX this and the following functions should have non-consing
 ;;; variants for sane in-game use.
