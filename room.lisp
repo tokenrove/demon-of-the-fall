@@ -8,11 +8,14 @@
 
 (in-package :vgdev-iso-cl)
 
-;;;; FLOORS
-
 (defconstant +tile-size+ 64)
 
-(defvar *default-floor*
+(defparameter *room-lowest-point* 0)
+(defparameter *room-highest-point* -256)
+
+;;;; FLOORS
+
+#+nil(defvar *default-floor*
   #(#(0 0 0 1 0 0 0)
     #(0 0 1 1 1 0 0)
     #(0 1 1 1 1 1 0)
@@ -22,6 +25,20 @@
     #(1 1 1 1 1 1 1)
     #(0 0 1 1 1 0 0)
     #(0 0 1 1 1 0 0)))
+
+(defvar *default-floor*
+  #(#(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)
+    #(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)))
 
 (defun paint-floor (floor-img &optional (floor-slice *default-floor*))
   "function PAINT-FLOOR floor-tile-img &optional floor-slice => NIL
@@ -48,3 +65,5 @@ to front."
 
 
 ;;;; BLOCKS
+
+(defvar *slices* ())

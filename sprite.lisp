@@ -24,7 +24,10 @@
    (animations :accessor sprite-animations)
    (x :accessor sprite-x)
    (y :accessor sprite-y)
-   (priority :accessor sprite-priority))
+   (priority :accessor sprite-priority)
+   (cur-anim :accessor sprite-cur-anim)
+   (cur-frame :accessor sprite-cur-frame)
+   (frame-counter :accessor sprite-frame-counter))
   (:documentation "An animated display object, with a concept of
 priority and screen position."))
 
@@ -39,7 +42,10 @@ priority and screen position."))
     (setf (sprite-frames sprite) (cadr (assoc :frames alist)))
     (setf (sprite-animations sprite) (cadr (assoc :animations alist)))
     (setf (sprite-x sprite) 0 (sprite-y sprite) 42 ; XXX sane defaults?
-	  (sprite-priority sprite) 0)
+	  (sprite-priority sprite) 0
+	  (sprite-cur-anim sprite) :default
+	  (sprite-cur-frame sprite) 0
+	  (sprite-frame-counter sprite) 0)
     sprite))
 
 (defun update-sprite-coords (sprite position)
@@ -53,8 +59,31 @@ priority and screen position."))
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."
   ;; XXX incomplete, should parse animations
-  (blit-image (sprite-image sprite) nil (sprite-x sprite)
-	      (sprite-y sprite)))
+  ;; get current frame
+  (let ((flist (cdr (assoc (sprite-cur-anim sprite)
+			   (sprite-animations sprite)))))
+    (multiple-value-bind (x y w h)
+	(values-list (nth (car (nth (sprite-cur-frame sprite) flist))
+			  (sprite-frames sprite)))
+      (sgum:with-foreign-objects ((src-rect sdl:rect))
+	(rectangle-set src-rect x y w h)
+	(blit-image (sprite-image sprite) src-rect (sprite-x sprite)
+		    (sprite-y sprite))))
+    ;; update frame
+    (decf (sprite-frame-counter sprite))
+    (when (minusp (sprite-frame-counter sprite))
+      (incf (sprite-cur-frame sprite))
+      (when (>= (sprite-cur-frame sprite) (length flist))
+	(setf (sprite-cur-frame sprite) 0))
+      (setf (sprite-frame-counter sprite)
+	    (cdr (nth (sprite-cur-frame sprite) flist))))))
+
+
+(defun set-sprite-animation (sprite anim)
+  ;; XXX set correct frame count, etc etc
+  (unless (eql anim (sprite-cur-anim sprite))
+    (setf (sprite-cur-anim sprite) anim)
+    (setf (sprite-cur-frame sprite) 0)))
 
 ;;;; Sprite Manager
 

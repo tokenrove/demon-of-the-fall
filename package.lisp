@@ -1,3 +1,3 @@
 
 (defpackage :vgdev-iso-cl
-  (:use :cl :uffi))
+  (:use :cl :uffi :anaphora))

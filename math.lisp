@@ -51,6 +51,26 @@
 	  :z (third vals))))
 (set-dispatch-macro-character #\# #\I #'|#I-reader|)
 
+(defun iso-point-component-function-of (axis)
+  (let ((f (cond ((eql axis :x) #'iso-point-x)
+		 ((eql axis :y) #'iso-point-y)
+		 ((eql axis :z) #'iso-point-z)
+		 (t (error "bad axis")))))
+    f))
+
+(defun iso-point-component (axis point)
+  (let ((f (cond ((eql axis :x) #'iso-point-x)
+		 ((eql axis :y) #'iso-point-y)
+		 ((eql axis :z) #'iso-point-z)
+		 (t (error "bad axis")))))
+    (funcall f point)))
+
+(defun (setf iso-point-component) (value axis point)
+  (cond ((eql axis :x) (setf (iso-point-x point) value))
+	((eql axis :y) (setf (iso-point-y point) value))
+	((eql axis :z) (setf (iso-point-z point) value))
+	(t (error "bad axis"))))
+
 (defstruct box
   position dimensions)
 

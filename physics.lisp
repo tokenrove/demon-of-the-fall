@@ -18,76 +18,187 @@ forever as friction becomes delegated to surfaces.")
 (defparameter *gravity* 1.5
   "Gravity affecting actors.")
 
-(defun update-physics (actor)
+(defun update-physics (a)
   "Update simple kinematics, friction, collision response on the given
-actor.  Assumes collisions have already been flagged by this point."
-  (update-vertical-physics actor)
-  (update-horizontal-physics actor))
-
-(defun update-horizontal-physics (a)
-  "Integrate acceleration into velocity, velocity into position,
-update position and velocity according to collisions."
-  (incf (iso-point-x (actor-velocity a)) (iso-point-x (actor-acceleration a)))
-  (incf (iso-point-z (actor-velocity a)) (iso-point-z (actor-acceleration a)))
+actor."
   (incf (iso-point-x (actor-position a)) (iso-point-x (actor-velocity a)))
   (incf (iso-point-z (actor-position a)) (iso-point-z (actor-velocity a)))
-  (let ((axc (actor-x-collision a))
-	(azc (actor-z-collision a)))
-    (cond ((eql axc :wall)		; wall collision
-	   (setf (iso-point-x (actor-velocity a)) 0))
-
-	  ((not (null axc))		; actor collision
-	   (setf (iso-point-x (actor-velocity a)) 0)
-	   (setf (iso-point-x (actor-position a))
-		 (if (< (+ (iso-point-x (actor-position a))
-			   (iso-point-x (box-dimensions (actor-box a))))
-			(+ (iso-point-x (actor-position axc))
-			   (half (iso-point-x (box-dimensions
-					       (actor-box axc))))))
-		     (- (iso-point-x (actor-position axc))
-			(iso-point-x (box-dimensions (actor-box a))))
-		     (+ (iso-point-x (actor-position axc))
-			(iso-point-x (box-dimensions (actor-box axc)))))))
-
-	  ((eql azc :wall)		; wall collision
-	   (setf (iso-point-z (actor-velocity a)) 0))
-
-	  ((not (null azc))		; actor collision
-	   (setf (iso-point-z (actor-velocity a)) 0)
-	   (setf (iso-point-z (actor-position a))
-		 (if (< (+ (iso-point-z (actor-position a))
-			   (iso-point-z (box-dimensions (actor-box a))))
-			(+ (iso-point-z (actor-position azc))
-			   (half (iso-point-z (box-dimensions
-					       (actor-box azc))))))
-		     (- (iso-point-z (actor-position azc))
-			(iso-point-z (box-dimensions (actor-box a))))
-		     (+ (iso-point-z (actor-position azc))
-			(iso-point-z (box-dimensions (actor-box azc))))))))))
-
-
-(defun update-vertical-physics (a)
-  (incf (iso-point-y (actor-velocity a)) (iso-point-y (actor-acceleration a)))
   (incf (iso-point-y (actor-position a)) (iso-point-y (actor-velocity a)))
-  (let ((ayc (actor-y-collision a)))
-    (cond ((null ayc)			; in the air
-	   (sinkf (iso-point-y (actor-velocity a)) *air-friction*)
-	   (incf (iso-point-y (actor-velocity a)) *gravity*)
-	   (sinkf (iso-point-x (actor-velocity a)) *air-friction*)
-	   (sinkf (iso-point-z (actor-velocity a)) *air-friction*))
-	  ((eql ayc :floor)		; ground
-	   ;; XXX call floor handler dynamically
-	   (setf (iso-point-y (actor-velocity a)) 0)
-	   (setf (iso-point-y (actor-position a)) 0)
-	   (sinkf (iso-point-x (actor-velocity a)) *ground-friction*)
-	   (sinkf (iso-point-z (actor-velocity a)) *ground-friction*))
-	  (t				; other actor
-	   ;; XXX call top handler
-	   (setf (iso-point-y (actor-velocity a)) 0)
-	   (setf (iso-point-y (actor-position a))
-		 (- (iso-point-y (actor-position ayc))
-		    (1- (iso-point-y (box-dimensions (actor-box ayc))))))
-	   ;; get friction value
-	   (sinkf (iso-point-x (actor-velocity a)) *ground-friction*)
-	   (sinkf (iso-point-z (actor-velocity a)) *ground-friction*))
-	   )))
+
+  (detect-collisions a)
+  ;;; call contact handlers:
+  (if (actor-contact-surface a)
+       ;; standing on something.
+       (progn
+	 ;; only if in contact with something below us.
+	 (sinkf (iso-point-x (actor-velocity a)) *ground-friction*)
+	 (sinkf (iso-point-z (actor-velocity a)) *ground-friction*))
+
+       ;; in the air.
+       (progn
+	 (sinkf (iso-point-y (actor-velocity a)) *air-friction*)
+	 (incf (iso-point-y (actor-velocity a)) *gravity*))))
+
+(defun detect-collisions (alice)
+  (setf (actor-contact-surface alice) nil)
+  (maphash (lambda (unused bob)
+	     (declare (ignore unused))
+	     (when (and (not (eql alice bob)) (penetrating-p alice bob))
+	       (multiple-value-bind (impulse lsa not-lsa)
+		   (resolve-collision alice bob)
+		 (dolist (axis lsa)
+		   (apply-impulse alice
+				  axis
+				  (iso-point-component axis impulse)))
+		 (dolist (axis not-lsa)
+		   (incf (iso-point-component axis (actor-position alice))
+			 (iso-point-component axis impulse)))
+		   
+		 ;; when lsa is :y...
+		 (when (and (eql (car lsa) :y)
+			    (> (iso-point-y (actor-position alice))
+			       (iso-point-y (actor-position bob))))
+		   (setf (actor-contact-surface alice) bob))
+
+		 (awhen (find (actor-type bob) *actor-archetypes* :key #'car)
+			(funcall (cadr (assoc :contact (cdr it)))
+				 lsa impulse alice)))))
+	   *actor-map*)
+
+  (room-collision-detection alice))
+
+
+(defun room-collision-detection (alice)
+  (let ((w (ceiling (iso-point-x (box-dimensions (actor-box alice)))
+		    +tile-size+))
+	(d (ceiling (iso-point-z (box-dimensions (actor-box alice)))
+		    +tile-size+))
+	(slice 0))
+    (loop for z from (floor (iso-point-z (actor-position alice)) +tile-size+) to d
+	  do (loop for x from (floor (iso-point-z (actor-position alice))
+				  +tile-size+) to w
+		   do (if (plusp slice)
+			  (try-slice-collision alice slice x z)
+			  (try-floor-collision alice x z))))))
+
+
+(defun try-slice-collision (alice slice x z)
+  nil)
+
+(defun make-wall-object (x z)
+  (let ((wall (make-instance 'actor)))
+    (setf (actor-position wall) #I((* x +tile-size+) 0
+				   (* z +tile-size+)))
+    (setf (actor-box wall)
+	  (make-box :position #I(0 0 0)
+		    :dimensions #I(+tile-size+
+				   *room-highest-point*
+				   +tile-size+)))
+    wall))
+
+(defun make-floor-object (x z)
+  (let ((floor (make-instance 'actor)))
+    (setf (actor-position floor) #I((* x +tile-size+) 0
+				   (* z +tile-size+)))
+    (setf (actor-box floor)
+	  (make-box :position #I(0 0 0)
+		    :dimensions #I(+tile-size+
+				   16
+				   +tile-size+)))
+    floor))
+
+(defun try-floor-collision (alice x z)
+  (if (or (minusp x) (minusp z))
+      (resolve-collision
+       alice
+       (make-wall-object x z))
+      (let ((floor-obj (make-floor-object x z)))
+	(when (penetrating-p alice floor-obj)
+	  (resolve-collision alice floor-obj)
+	  (setf (actor-contact-surface alice) floor-obj)))))
+
+
+(defun sign-of (v)
+  (cond ((plusp v) 1)
+	((minusp v) -1)
+	(t nil)))
+
+;; eventually this will use a cool trick like in game physics section
+;; 5.3 or so.
+(defun resolve-collision (alice bob)
+  (let ((impulse #I(0 0 0)))
+    ;; handle fractional component first.
+    (dolist (axis '(:x :y :z))
+      (let* ((f (iso-point-component-function-of axis))
+	     (amin (iso-point-component axis (actor-position alice)))
+	     (bmin (iso-point-component axis (actor-position bob))))
+	(when
+	    (extents-overlap-p
+	     amin (+ amin (funcall f (box-dimensions (actor-box alice))))
+	     bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
+	  (multiple-value-bind (int frac)
+	      (floor (funcall f (actor-velocity alice)))
+	    (declare (ignore int))
+	    (decf (iso-point-component axis (actor-position alice))
+		  frac)
+	    (decf (iso-point-component axis impulse) frac)))))
+
+    ;; pixel by pixel step, otherwise.
+    (do ((max-iterations 15 (1- max-iterations)))
+	((or (not (penetrating-p alice bob))
+	     (zerop max-iterations)))
+      (dolist (axis '(:x :y :z))
+	(let* ((f (iso-point-component-function-of axis))
+	       (amin (funcall f (actor-position alice)))
+	       (bmin (funcall f (actor-position bob))))
+	  (when
+	      (extents-overlap-p
+	       amin (+ amin (funcall f (box-dimensions (actor-box alice))))
+	       bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
+	    (awhen (sign-of (funcall f (actor-velocity alice)))
+		   (decf (iso-point-component axis
+					      (actor-position alice)) it)
+		   (decf (iso-point-component axis impulse) it))))))
+    
+    (let (lsa not-lsa)
+      (dolist (axis '(:x :y :z))
+	(let* ((f (iso-point-component-function-of axis))
+	       (amin (funcall f (actor-position alice)))
+	       (bmin (funcall f (actor-position bob))))
+	  (if (extents-overlap-p
+	       amin (+ amin (funcall f (box-dimensions (actor-box alice))))
+	       bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
+	      (push axis not-lsa)
+	      (push axis lsa))))
+      (values impulse lsa not-lsa))))
+
+
+(defun apply-impulse (actor &key (x 0.0) (y 0.0) (z 0.0))
+  (incf (iso-point-x (actor-velocity actor)) x)
+  (incf (iso-point-y (actor-velocity actor)) y)
+  (incf (iso-point-z (actor-velocity actor)) z))
+
+
+(defun report-axes-of-separation (alice-box bob-box)
+  (let (separation)
+    (dolist (axis '(:x :y :z))
+      (let ((amin (iso-point-component axis (box-position alice-box)))
+	    (bmin (iso-point-component axis (box-position bob-box))))
+	(unless
+	    (extents-overlap-p
+	     amin (+ amin (iso-point-component axis
+					       (box-dimensions alice-box)))
+	     bmin (+ bmin (iso-point-component axis
+					       (box-dimensions bob-box))))
+	  (push axis separation))))
+    separation))
+
+(defun penetrating-p (alice bob)
+  (let ((alice-box (box-translate (actor-box alice)
+				  (actor-position alice)))
+	(bob-box (box-translate (actor-box bob)
+				  (actor-position bob))))
+    #+nil(let ((separation (report-axes-of-separation alice-box bob-box)))
+      (setf *debug-projections* separation))
+    (boxes-overlap-p alice-box bob-box)))
+

@@ -17,12 +17,10 @@
    (sprite :accessor actor-sprite)
    (position :accessor actor-position)
    (velocity :accessor actor-velocity)
-   (acceleration :accessor actor-acceleration)
    (box :accessor actor-box)
-   (x-collision :accessor actor-x-collision)
-   (y-collision :accessor actor-y-collision)
-   (z-collision :accessor actor-z-collision)
-   (handler :accessor actor-handler))
+   (handler :accessor actor-handler)
+   (contact-surface :accessor actor-contact-surface)
+   (facing :accessor actor-facing))
   (:documentation "An ACTOR is an object that exists at the game-logic
 level persistently.  Actors have handlers that are called at each time
 slice in the game, handlers that are called in response to collisions,
@@ -60,26 +58,74 @@ Remove the actor specified by id from the actor manager."
 (defparameter *actor-archetypes*
   '((:glen 
      (:sprite
-      (:image "pglen1.pcx")
+      (:image "ret-data/petsheet.pcx")
       (:blit-offset 8)
-      (:frames ((0 0 24 48)))
-      (:animations ((:face-left (0 . 60)))))
+      (:frames ((0 0 24 48)
+		(24 0 24 48)
+		(48 0 24 48)
+		(72 0 24 48)
+		(96 0 24 48)
+		(120 0 24 48)
+		(144 0 24 48)
+		(168 0 24 48)
+		(192 0 24 48)))
+      (:animations ((:default (0 . 60))
+		    (:walk-east (1 . 5)
+				(2 . 5)
+				(3 . 5)
+				(2 . 5))
+		    (:stand-east (0 . 60))
+		    (:stand-north (4 . 60))
+		    (:walk-north (5 . 5)
+				 (6 . 5)
+				 (7 . 5)
+				 (6 . 5)))))
      (:box
       (0 0 0)
       (24 36 24))
      (:handler
-      create-human-input-handler))
+      create-human-input-handler)
+     (:contact
+      player-contact-handler))
     (:push-block
      (:sprite
-      (:image "pblock-1.pcx")
+      (:image "ret-data/block.pcx")
       (:blit-offset 16)
       (:frames ((0 0 64 64)))
       (:animations ((:default (0 . 60)))))
      (:handler
       create-do-nothing-handler)
+     (:contact
+      pushable-block-handler)
      (:box
       (0 0 0)
-      (64 32 64))))
+      (64 32 64)))
+    (:float-block
+     (:sprite
+      (:image "ret-data/bl-cushi.pcx")
+      (:blit-offset 16)
+      (:frames ((0 0 64 64)))
+      (:animations ((:default (0 . 60)))))
+     (:handler
+      create-floating-block-handler)
+     (:contact
+      pushable-block-handler)
+     (:box
+      (0 0 0)
+      (64 32 64)))
+    (:floor-block
+     (:sprite
+      (:image "ret-data/fl-check.pcx")
+      (:blit-offset 16)
+      (:frames ((0 0 64 40)))
+      (:animations ((:default (0 . 60)))))
+     (:handler
+      create-floating-block-handler)
+     (:contact
+      pushable-block-handler)
+     (:box
+      (0 0 0)
+      (64 32 40))))
   "The actor archetypes table, which defines the default values for
 many parameters of an actor.")
 
@@ -95,6 +141,8 @@ values from *ACTOR-ARCHETYPES*."
     (setf (actor-position actor) position)
     (setf (actor-handler actor)
 	  (funcall (cadr (assoc :handler archetype))))
+    (setf (actor-contact-surface actor) nil)
+    (setf (actor-facing actor) :east)
     (setf (actor-sprite actor)
 	  (new-sprite-from-alist (cdr (assoc :sprite archetype))))
     (add-sprite-to-list (actor-sprite actor))
@@ -106,103 +154,31 @@ values from *ACTOR-ARCHETYPES*."
 		    :dimensions (make-iso-point :x (first (second box))
 						:y (second (second box))
 						:z (third (second box))))))
-    (setf (actor-velocity actor) (make-iso-point)
-	  (actor-acceleration actor) (make-iso-point))
+    (setf (actor-velocity actor) (make-iso-point))
     (manage-actor actor)
     actor))
 
 
-(defun update-actor-collisions (id actor)
-  ;; Crude but simple n^2 collision checking.
-  (setf (actor-x-collision actor) nil)
-  (setf (actor-y-collision actor) nil)
-  (setf (actor-z-collision actor) nil)
-  (unless (eql (actor-type actor) :push-block)
-    (maphash (lambda (id-b actor-b)
-	       (unless (= id id-b)
-		 (check-collision actor actor-b)))
-	     *actor-map*))
-  (unless (actor-x-collision actor)
-    (check-wall-collision actor))
-  (unless (actor-y-collision actor)
-    (check-floor-collision actor)))
 
-
-(defun update-all-actors ()
+(defun update-all-actors (foo)
   "Update collisions, physics, and handlers for all actors registered
 with the actor manager."
+  (declare (ignore foo))
   (maphash (lambda (id actor)
-	     (update-actor-collisions id actor)
 	     (update-physics actor)
+
+	     ;; ensure no penetrations.
+	     (maphash (lambda (id-b actor-b)
+			(unless (= id id-b)
+			  (assert (not (penetrating-p actor actor-b)))))
+		      *actor-map*)
+
+	     ;; XXX update contact handlers
 	     ;; XXX camera
 	     (update-sprite-coords (actor-sprite actor)
 				   (actor-position actor))
 	     (funcall (actor-handler actor) id actor))
 	   *actor-map*))
-
-
-;;; XXX good god this needs refactoring
-(defun check-collision (a b)
-  "Checks for horizontal and vertical collisions between actors a and
-b.  Uses the axis-aligned bounding boxes in ACTOR-BOX."
-  (when (boxes-overlap-p (box-translate (actor-box a) (actor-position a))
-			 (box-translate (actor-box b) (actor-position b)))
-    ;; it's a vertical collision if a is above b and either a has
-    ;; positive y velocity, or b has negative y velocity.
-    (cond ((and (<= (iso-point-y (actor-position a))
-		    (- (iso-point-y (actor-position b))
-		       (half (iso-point-y (box-dimensions (actor-box b))))))
-		;; This test is >= rather than plusp to allow an actor
-		;; to lie on the surface of another.
-		(or (>= (iso-point-y (actor-velocity a)) 0)
-		    (minusp (iso-point-y (actor-velocity b)))))
-	   (setf (actor-y-collision a) b))
-
-	  ;; if a is to the right of b and heading left,
-	  ;; or if a is to the left of b and heading right,
-	  ;; it's an x collision.
-	  ((or (and (>= (iso-point-x (actor-position a))
-			(+ (iso-point-x (actor-position b))
-			   (half (iso-point-x (box-dimensions
-					       (actor-box b))))))
-		    (or (minusp (iso-point-x (actor-velocity a)))
-			(plusp (iso-point-x (actor-velocity b)))))
-	       (and (<= (iso-point-x (actor-position a))
-			(+ (iso-point-x (actor-position b))
-			   (half (iso-point-x (box-dimensions
-					       (actor-box b))))))
-		    (or (plusp (iso-point-x (actor-velocity a)))
-			(minusp (iso-point-x (actor-velocity b))))))
-	     (setf (actor-x-collision a) b))
-
-	   ((or (and (>= (iso-point-z (actor-position a))
-			(+ (iso-point-z (actor-position b))
-			   (half (iso-point-z (box-dimensions
-					       (actor-box b))))))
-		    (or (minusp (iso-point-z (actor-velocity a)))
-			(plusp (iso-point-z (actor-velocity b)))))
-	       (and (<= (iso-point-z (actor-position a))
-			(+ (iso-point-z (actor-position b))
-			   (half (iso-point-z (box-dimensions
-					       (actor-box b))))))
-		    (or (plusp (iso-point-z (actor-velocity a)))
-			(minusp (iso-point-z (actor-velocity b))))))
-	    (setf (actor-z-collision a) b)))
-    t))
-
-
-;;; XXX nop
-(defun check-wall-collision (actor)
-  "Checks whether the actor is colliding with any walls."
-  (declare (ignore actor))
-  nil)
-
-(defun check-floor-collision (actor)
-  "Checks whether the actor is colliding with the floor, and sets
-their v-collision state accordingly."
-  (when (and (>= (iso-point-y (actor-position actor)) 0) t)
-;	     (>= (iso-point-y (actor-velocity actor)) 0))
-    (setf (actor-y-collision actor) :floor)))
 
 
 ;;;; Handlers
@@ -211,20 +187,57 @@ their v-collision state accordingly."
   "Create an actor handler which does nothing."
   (lambda (id actor) (declare (ignore id actor))))
 
+(defun create-floating-block-handler ()
+  "Create an actor handler which floats up and down."
+  (let ((direction :up))
+    (lambda (id actor)
+      (declare (ignore id))
+      (if (eql direction :up)
+	  (if (> (iso-point-y (actor-position actor)) -42)
+	      ;(apply-impulse actor :y -0.2)
+	      (setf (iso-point-y (actor-velocity actor)) -0.2)
+	      (setf direction :down))
+	  (if (< (iso-point-y (actor-position actor)) 0)
+	      (setf (iso-point-y (actor-velocity actor)) 0.2)
+	      (setf direction :up))))))
+
 (defun create-human-input-handler ()
   "Create a handler which updates an actor based on current input
 events."
   (lambda (id player)
     (declare (ignore id))
     (when (event-pressedp :up)
-      (decf (iso-point-z (actor-velocity player)) 0.5))
+      (apply-impulse player :z -0.5))
     (when (event-pressedp :down)
-      (incf (iso-point-z (actor-velocity player)) 0.5))
+      (apply-impulse player :z 0.5)
+      (set-sprite-animation (actor-sprite player) :walk-east))
     (when (event-pressedp :left)
-      (decf (iso-point-x (actor-velocity player)) 0.5))
+      (apply-impulse player :x -0.5))
     (when (event-pressedp :right)
-      (incf (iso-point-x (actor-velocity player)) 0.5))
+      (apply-impulse player :x 0.5)
+      (set-sprite-animation (actor-sprite player) :walk-north))
     (when (event-pressedp :jump)
-      (decf (iso-point-y (actor-velocity player)) 1.4)
-      (decf (iso-point-y (actor-position player)) 2))))
+      (apply-impulse player :y -1.4))))
+
+
+(defun pushable-block-handler (face impulse actor)
+;;   if something is on top of us,
+;;       sink its horizontal velocities by our friction,
+;;       add our velocity to its velocity.
+  )
+
+(defun player-contact-handler (face impulse actor)
+;;   if something is on top of us,
+;;       sink its horizontal velocities by our friction,
+;;       add our velocity to its velocity.
+;;   if something is being pushed horizontally by us,
+;;       apply impulse to it.
+  )
+
+;; (defun monster-contact-handler ()
+;;    if something is on top of us,
+;;        sink its horizontal velocities by our friction,
+;;        add our velocity to its velocity.
+;;    if we're touching the player at all,
+;;        kill them.
 

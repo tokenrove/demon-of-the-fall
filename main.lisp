@@ -4,19 +4,11 @@
 ;;; Author: Julian Squires <tek@wiw.org> / 2004
 ;;;
 
-
 (in-package :vgdev-iso-cl)
-
-(defun debugging-line-draw (point-1 point-2 origin)
-  (multiple-value-bind (x1 y1)
-      (iso-project-point (iso-point-translate point-1 origin))
-    (multiple-value-bind (x2 y2)
-	(iso-project-point (iso-point-translate point-2 origin))
-      (sdl:draw-line *vbuffer* x1 y1 x2 y2 255 255 255))))
 
 (defun lil-demo ()
   (fill-background 255)
-  (update-all-actors)
+  (update-all-actors 20)
   (maphash #'(lambda (id actor)
 	       (declare (ignore id))
 	       (draw-back-of-actor-box actor))
@@ -28,33 +20,7 @@
 	   *actor-map*)
   (refresh-display))
 
-(defun draw-back-of-actor-box (actor)
-  (let* ((pos (copy-iso-point (actor-position actor)))
-	 (box (box-dimensions (actor-box actor)))
-	 (x (iso-point-x box))
-	 (y (- (iso-point-y box)))
-	 (z (iso-point-z box)))
-    ;; back
-    (debugging-line-draw #i(x y z) #i(x y 0) pos)
-    (debugging-line-draw #i(x y 0) #i(x 0 0) pos)
-    (debugging-line-draw #i(0 y 0) #i(x y 0) pos)
-    (debugging-line-draw #i(0 0 0) #i(x 0 0) pos)
-    (debugging-line-draw #i(x 0 z) #i(x 0 0) pos)))
-
-(defun draw-front-of-actor-box (actor)
-  (let* ((pos (copy-iso-point (actor-position actor)))
-	 (box (box-dimensions (actor-box actor)))
-	 (x (iso-point-x box))
-	 (y (- (iso-point-y box)))
-	 (z (iso-point-z box)))
-    ;; front
-    (debugging-line-draw #i(0 y z) #i(0 0 z) pos)
-    (debugging-line-draw #i(x y z) #i(0 y z) pos)
-    (debugging-line-draw #i(x 0 z) #i(0 0 z) pos)
-    (debugging-line-draw #i(x y z) #i(x 0 z) pos)
-    (debugging-line-draw #i(0 y 0) #i(0 y z) pos)
-    (debugging-line-draw #i(0 y 0) #i(0 0 0) pos)
-    (debugging-line-draw #i(0 0 0) #i(0 0 z) pos)))
+(defvar *debug-projections* nil)
 
 (defun demo-loop ()
   "Do a little interactive demo-loop on the current display.  Note
@@ -63,15 +29,16 @@ that the display must already have been created."
   (create-sprite-manager)
   (create-actor-manager)
 
-  (let ((floor-img (load-image "pfloor-1.pcx" t))
+  (let ((floor-img (load-image "ret-data/fl-check.pcx" t))
 	(fps-count (cons 0 (sdl:get-ticks))))
 
     (load-default-font "Jagged Dreams.ttf" 18)
 
     ;; XXX this stuff will all go in level-loading
     (use-image-palette floor-img)
-    (spawn-actor-from-archetype :glen #I(0 0 0))
+    (spawn-actor-from-archetype :glen #I(64 0 0))
     (spawn-actor-from-archetype :push-block #I(224 0 94))
+    (spawn-actor-from-archetype :float-block #I(224 0 166))
 
     (loop
      (sync-start-frame)
@@ -81,7 +48,7 @@ that the display must already have been created."
 
      ;; Background
      ;; XXX replace with room drawing
-     (fill-background 255)
+     (fill-background 0)
      (paint-floor floor-img)
 
      (update-all-actors 20)
@@ -97,8 +64,7 @@ that the display must already have been created."
     (destroy-font)
     (free-image floor-img)
     (destroy-sprite-manager)
-    (format t "~&Frames-per-second: ~D" (float (* 1000
-						  (/ (car fps-count)
-						     (- (sdl:get-ticks)
-							(cdr fps-count))))))))
+    (format t "~&Frames-per-second: ~D"
+	    (float (* 1000 (/ (car fps-count) (- (sdl:get-ticks)
+						 (cdr fps-count))))))))
 

@@ -3,7 +3,7 @@
 (in-package #:vgdev-iso-cl-system)
 
 (defsystem vgdev-iso-cl
-    :depends-on (:uffi :sdl :sdl-img :sdl-ttf)
+    :depends-on (:uffi :sdl :sdl-img :sdl-ttf :anaphora)
     :components
     ((:file "package")
      ;; low-level
@@ -16,6 +16,7 @@
      (:file "sprite" :depends-on ("package" "graphics" "math"))
      ;; high-level logic
      (:file "actor" :depends-on ("package" "sprite" "math"))
+     (:file "utilities" :depends-on ("package" "graphics" "math" "actor"))
      (:file "physics" :depends-on ("actor" "math"))
      (:file "room" :depends-on ("package" "graphics" "math"))
      (:file "main" :depends-on ("actor" "room" "graphics" "event"
