@@ -19,6 +19,7 @@
 
 (defclass sprite ()
   ((image :accessor sprite-image)
+   (blit-offset :accessor sprite-blit-offset)
    (frames :accessor sprite-frames)
    (animations :accessor sprite-animations)
    (x :accessor sprite-x)
@@ -34,6 +35,7 @@ priority and screen position."))
   (let ((sprite (make-instance 'sprite)))
     (setf (sprite-image sprite)
 	  (load-image (cadr (assoc :image alist)) t))
+    (setf (sprite-blit-offset sprite) (cadr (assoc :blit-offset alist)))
     (setf (sprite-frames sprite) (cadr (assoc :frames alist)))
     (setf (sprite-animations sprite) (cadr (assoc :animations alist)))
     (setf (sprite-x sprite) 0 (sprite-y sprite) 42 ; XXX sane defaults?
@@ -44,10 +46,9 @@ priority and screen position."))
   "Update sprite screen coordinates from world coordinates."
   (multiple-value-bind (u v) (iso-project-point position)
     (setf (sprite-x sprite) u
-	  (sprite-y sprite) v
+	  (sprite-y sprite) (+ v (sprite-blit-offset sprite))
 	  ;; XXX priority formula isn't quite right
-	  (sprite-priority sprite) (- (iso-point-z position)
-				      (iso-point-y position)))))
+	  (sprite-priority sprite) (iso-point-z position))))
 
 (defun draw-sprite (sprite)
   "Draw a sprite's current frame and update."

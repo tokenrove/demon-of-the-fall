@@ -61,16 +61,18 @@ Remove the actor specified by id from the actor manager."
   '((:glen 
      (:sprite
       (:image "pglen1.pcx")
+      (:blit-offset 8)
       (:frames ((0 0 24 48)))
       (:animations ((:face-left (0 . 60)))))
      (:box
       (0 0 0)
-      (24 48 24))
+      (24 36 24))
      (:handler
       create-human-input-handler))
     (:push-block
      (:sprite
       (:image "pblock-1.pcx")
+      (:blit-offset 16)
       (:frames ((0 0 64 64)))
       (:animations ((:default (0 . 60)))))
      (:handler
@@ -80,6 +82,7 @@ Remove the actor specified by id from the actor manager."
       (64 32 64))))
   "The actor archetypes table, which defines the default values for
 many parameters of an actor.")
+
 
 (defun spawn-actor-from-archetype (name position)
   "function SPAWN-ACTOR-FROM-ARCHETYPE name position => actor
@@ -123,6 +126,7 @@ values from *ACTOR-ARCHETYPES*."
     (check-wall-collision actor))
   (unless (actor-y-collision actor)
     (check-floor-collision actor)))
+
 
 (defun update-all-actors ()
   "Update collisions, physics, and handlers for all actors registered

@@ -41,27 +41,41 @@
 (defstruct iso-point
   (x 0 :type number) (y 0 :type number) (z 0 :type number))
 
+(defun |#I-reader| (stream subchar arg)
+  "Make an iso-point from a list #I(x y z)."
+  (declare (ignore subchar arg))
+  (let ((vals (read stream t nil t)))
+    (unless (= 3 (length vals))
+      (error "iso-point requires x, y, and z values exactly."))
+    (list 'make-iso-point :x (first vals) :y (second vals)
+	  :z (third vals))))
+(set-dispatch-macro-character #\# #\I #'|#I-reader|)
+
 (defstruct box
   position dimensions)
 
 (defun iso-project-point (p)
   "Project a world coordinate (3D) point onto screen coordinates.
-Returns two values, X and Y in screen coordinates."
+Returns two values, X and Y in screen coordinates.  This is *before*
+camera positioning."
   (let ((sx (+ (half (iso-point-x p)) (half (iso-point-z p))))
 	(sy (+ (iso-point-y p)
 	       (- (quarter (iso-point-z p))
 		  (quarter (iso-point-x p))))))
-    (setf sx (+ (round sx) (half (display-width))))
-    (setf sy (round (+ sy (display-height))))
-    (values sx sy)))
+    (incf sy (half (display-height)))
+    (values (round sx) (round sy))))
 
+;;; XXX this and the following functions should have non-consing
+;;; variants for sane in-game use.
+(defun iso-point-translate (point origin)
+  (make-iso-point
+   :x (+ (iso-point-x point) (iso-point-x origin))
+   :y (+ (iso-point-y point) (iso-point-y origin))
+   :z (+ (iso-point-z point) (iso-point-z origin))))
 
 (defun box-translate (box point)
   (make-box
-   :position (make-iso-point
-	      :x (+ (iso-point-x (box-position box)) (iso-point-x point))
-	      :y (+ (iso-point-y (box-position box)) (iso-point-y point))
-	      :z (+ (iso-point-z (box-position box)) (iso-point-z point)))
+   :position (iso-point-translate (box-position box) point) 
    :dimensions (box-dimensions box)))
 
 
@@ -85,6 +99,9 @@ Returns two values, X and Y in screen coordinates."
   (when (< a1 b1) (setf a1 b1))
   (when (> a2 b2) (setf a2 b2))
   (< a1 a2))
+
+(defun extents-overlap-p (amin amax bmin bmax)
+  (and (> amax bmin) (> bmax amin)))
 
 (defun boxes-overlap-p (a b)
   (and (let ((xa (iso-point-x (box-position a)))
