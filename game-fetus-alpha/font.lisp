@@ -23,7 +23,7 @@
 
 (defun paint-string (font string x y r g b)
   "Paints STRING on *VBUFFER* using FONT, at position (X,Y)."
-  (with-cstring (cstring string)
+  (uffi:with-cstring (cstring string)
     (let ((sface (maybe-null->nil
 		  (ll-font-render-solid font cstring r g b))))
       (when sface
@@ -32,7 +32,7 @@
 
 (defun paint-blended-string (font string x y r g b)
   "Paints STRING on *VBUFFER* using FONT, at position (X,Y)."
-  (with-cstring (cstring string)
+  (uffi:with-cstring (cstring string)
     (let ((sface (maybe-null->nil
 		  (ll-font-render-blended font cstring r g b))))
       (when sface
@@ -41,7 +41,7 @@
 
 (defun paint-shaded-string (font string x y r1 g1 b1 r2 g2 b2)
   "Paints STRING on *VBUFFER* using FONT, at position (X,Y)."
-  (with-cstring (cstring string)
+  (uffi:with-cstring (cstring string)
     (let ((sface (maybe-null->nil
 		  (ll-font-render-shaded font cstring r1 g1 b1
 					 r2 g2 b2))))
@@ -57,7 +57,7 @@
 (defun load-font (file &optional (ptsize 12))
   "Loads font, with point size PTSIZE, from FILE, and returns it, or
 NIL."
-  (with-cstring (name file)
+  (uffi:with-cstring (name file)
     (maybe-null->nil (ll-font-open name ptsize))))
 
 (defmacro with-font ((font-var file &optional (ptsize 12)) &body body)

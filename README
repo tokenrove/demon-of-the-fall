@@ -91,3 +91,14 @@ Fix comments, function documentation, and document any assumptions.
 Physical structure of the code needs to be rearranged to better
 reflect dependencies, so that initial load of the code doesn't have so
 many warnings.
+
+
+NOTES TO SELF:
+
+Maybe have strategy-RPG-style cursor display in editor, where a floating
+sprite indicates height, and a standard box-cursor indicates the floor
+tile.
+
+It would be nice to have the ability to specify arbitrary orientations
+of the axes in aequus-noctis, to support a multi-direction-view tactical
+game like Vandal Hearts.

@@ -58,7 +58,7 @@ if something went wrong."
 
 Loads an image (in pretty much any sane format), optionally with color
 zero flagged as transparent (when colorkeyp)."
-  (with-cstring (name filename)
+  (uffi:with-cstring (name filename)
     (and filename
 	 (maybe-null->nil (ll-gfx-load-image name (bool->int colorkeyp))))))
 

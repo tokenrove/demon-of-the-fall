@@ -1,7 +1,7 @@
 
 (defpackage :game-fetus-alpha
   (:nicknames :fetus)
-  (:use :cl :uffi :anaphora)
+  (:use :cl :anaphora)
   (:export #:create-display
 	   #:new-image-buffer
 	   #:destroy-display

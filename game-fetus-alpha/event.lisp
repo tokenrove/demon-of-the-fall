@@ -54,27 +54,6 @@
   "Hash which tracks whether or not a button is being pressed.")
 
 
-;; Hopefully these can stay hidden from the user.
-(declaim (inline event-type event-axis event-value))
-(defun event-type (event)
-  (if event
-      #-openmcl(get-slot-value event 'll-event 'type)
-      #+openmcl(get-slot-value event ll-event type)
-      (ll-event-type)))
-
-(defun event-axis (event)
-  (if event
-      #-openmcl(get-slot-value event 'll-event 'axis)
-      #+openmcl(get-slot-value event ll-event axis)
-      (ll-event-axis)))
-
-(defun event-value (event)
-  (if event
-      #-openmcl(get-slot-value event 'll-event 'value)
-      #+openmcl(get-slot-value event ll-event value)
-      (ll-event-value)))
-
-
 ;;;; API-LEVEL ROUTINES.
 
 ;;; Any point having a with-event-handling macro?  I think this is
@@ -97,12 +76,12 @@ an interruption or similar."
   "function EVENT-UPDATE
 
 Checks for events, updates internal input state."
-  (with-foreign-objects ((event ll-event))
+  (with-foreign-objects ((event '(:struct ll-event)))
     (do* ((rv #1=(ll-poll-event (pointer-to-object event)) #1#))
 	 ((= rv 0))
-      (let ((type (get-slot-value event 'll-event 'type))
-	    (value (get-slot-value event 'll-event 'value))
-	    (axis (get-slot-value event 'll-event 'axis)))
+      (let ((type (uffi:get-slot-value event 'll-event 'type))
+	    (value (uffi:get-slot-value event 'll-event 'value))
+	    (axis (uffi:get-slot-value event 'll-event 'axis)))
 	(cond ((= type +ll-event-key-down+)
 	       (awhen (gethash value *xlate-symbol->map-idx*)
 		 (setf (bit *event-map* it) 1)))
@@ -147,10 +126,9 @@ Checks for events, updates internal input state."
 
 
 (defun get-key-event ()
-  (with-foreign-object (event 'll-event)
-    (declare (dynamic-extent event))
-    (do ((rv #1=(ll-wait-event event) #1#))
+  (with-foreign-objects ((event '(:struct ll-event)))
+    (do ((rv #1=(ll-wait-event (pointer-to-object event)) #1#))
 	((= rv 0))
-      (let ((type (event-type event)))
+      (let ((type (uffi:get-slot-value event 'll-event 'type)))
 	(cond ((= type +ll-event-key-down+)
-	       (return (event-value event))))))))
+	       (return (uffi:get-slot-value event 'll-event 'value))))))))
