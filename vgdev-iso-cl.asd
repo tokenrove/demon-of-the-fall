@@ -3,10 +3,18 @@
 (in-package #:vgdev-iso-cl-system)
 
 (defsystem vgdev-iso-cl
-    :depends-on (:uffi :sdl :sdl-img)
+    :depends-on (:uffi :sdl :sdl-img :sdl-ttf)
     :components
     ((:file "package")
+     ;; low-level
      (:file "graphics" :depends-on ("package"))
      (:file "event" :depends-on ("package"))
      (:file "timer" :depends-on ("package"))
-     (:file "main" :depends-on ("graphics" "event" "timer"))))
+     ;; middle-level
+     (:file "font" :depends-on ("package" "graphics"))
+     (:file "sprite" :depends-on ("package" "graphics"))
+     ;; high-level logic
+     (:file "actor" :depends-on ("package" "sprite"))
+     (:file "room" :depends-on ("package" "graphics"))
+     (:file "main" :depends-on ("actor" "room" "graphics" "event"
+					"timer" "sprite" "font"))))

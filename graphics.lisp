@@ -46,6 +46,9 @@
     (sdl:blit-surface *vbuffer* nil *vsurface* nil))
   (sdl:flip *vsurface*))
 
+(defun display-width () (sdl:surface-w *vsurface*))
+(defun display-height () (sdl:surface-h *vsurface*))
+
 (defun fill-background (color)
   (sdl:fill-rect *vbuffer* nil color))
 
@@ -62,6 +65,9 @@
       (sdl:set-color-key image (logior sdl:+srccolorkey+ sdl:+rleaccel+)
 			 0))
     image))
+
+(defun free-image (image)
+  (sdl:free-surface image))
 
 (defun use-image-palette (image)
   (let ((palette (sdl:pixel-format-palette
