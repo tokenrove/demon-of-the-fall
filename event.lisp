@@ -8,6 +8,7 @@
     (274 :down)				; down -> :down
     (276 :left)				; left -> :left
     (275 :right)			; right -> :right
+    (122 :jump)				; z -> :jump
     ))
 (defvar *event-map* (make-hash-table))
 

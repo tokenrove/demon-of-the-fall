@@ -32,7 +32,9 @@ that the display must already have been created."
     (setf (actor-box player)
 	  (make-box :position (make-iso-point)
 		    :dimensions (make-iso-point :x 24 :y 48 :z 24)))
-    (setf (actor-velocity player) (make-iso-point))
+    (setf (actor-velocity player) (make-iso-point)
+	  (actor-acceleration player) (make-iso-point))
+    (manage-actor player)
 
     (setf (actor-position block-actor) (make-iso-point :z -64))
     (setf (actor-handler block-actor) (lambda (id a) (declare (ignore id a))))
@@ -43,7 +45,9 @@ that the display must already have been created."
     (setf (actor-box block-actor)
 	  (make-box :position (make-iso-point)
 		    :dimensions (make-iso-point :x 64 :y 32 :z 64)))
-    (setf (actor-velocity block-actor) (make-iso-point))
+    (setf (actor-velocity block-actor) (make-iso-point)
+	  (actor-acceleration block-actor) (make-iso-point))
+    (manage-actor block-actor)
 
     (use-image-palette (sprite-image (actor-sprite player)))
 
@@ -59,19 +63,16 @@ that the display must already have been created."
      (fill-background 255)
      (paint-floor floor-img)
 
+     ;; Actors
+     (update-all-actors)
      ;; Sprites
-     ;; XXX replace with sprite engine
-     (update-sprite-coords (actor-sprite player)
-			   (actor-position player))
-     (update-sprite-coords (actor-sprite block-actor)
-			   (actor-position block-actor))
      (update-all-sprites)
 
      ;; OSD
      (let* ((b (box-translate (actor-box player) (actor-position player)))
 	    (p (box-position b))
 	    (d (box-dimensions b)))
-       (paint-string (format nil "Player: (~D,~D,~D)(~D,~D,~D) -- collision: ~A"
+       (paint-string (format nil "Player: (~A,~A,~A)(~A,~A,~A) -- collision: ~A"
 			     (iso-point-x p) (iso-point-y p) (iso-point-z p)
 			     (iso-point-x d) (iso-point-y d) (iso-point-z d)
 			     (check-collision player block-actor))

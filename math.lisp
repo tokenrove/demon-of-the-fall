@@ -4,7 +4,7 @@
 ;;;; Isometric fu
 
 (defstruct iso-point
-  (x 0) (y 0) (z 0))
+  (x 0 :type number) (y 0 :type number) (z 0 :type number))
 
 (defstruct box
   position dimensions)
@@ -12,11 +12,11 @@
 (defun iso-project-point (p)
   "Project a world coordinate (3D) point onto screen coordinates.
 Returns two values, X and Y in screen coordinates."
-  (let ((sx (+ (ash (iso-point-x p) -1) (ash (iso-point-z p) -1)))
+  (let ((sx (+ (/ (iso-point-x p) 2) (/ (iso-point-z p) 2)))
 	(sy (+ (iso-point-y p)
-	       (- (ash (iso-point-z p) -2)
-		  (ash (iso-point-x p) -2)))))
-    (setf sx (round (+ sx (ash (display-width) -1))))
+	       (- (/ (iso-point-z p) 4)
+		  (/ (iso-point-x p) 4)))))
+    (setf sx (+ (round sx) (ash (display-width) -1)))
     (setf sy (round (+ sy (display-height))))
     (values sx sy)))
 

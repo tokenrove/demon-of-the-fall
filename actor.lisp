@@ -29,50 +29,62 @@
   (remhash id *actor-map*))
 
 (defun update-all-actors ()
-  ;; Crude but simple.
+  "Update collisions, physics, and handlers for all actors registered
+with the actor manager."
+  ;; Crude but simple n^2 collision checking.
   (maphash (lambda (id-a actor-a)
 	     (setf (actor-h-collision actor-a) nil)
 	     (setf (actor-v-collision actor-a) nil)
 	     (maphash (lambda (id-b actor-b)
-			(check-collision actor-a actor-b))
+			(unless (= id-a id-b)
+			  (check-collision actor-a actor-b)))
 		      *actor-map*)
 	     (unless (actor-h-collision actor-a)
 	       (check-wall-collision actor-a))
 	     (unless (actor-v-collision actor-a)
 	       (check-floor-collision actor-a)))
 	   *actor-map*)
-;  (maphash (lambda (id actor) (update-physics actor)) *actor-map*)
   (maphash (lambda (id actor)
-	     (funcall (actor-handler actor) id actor)) *actor-map*))
+	     (declare (ignore id))
+	     (update-physics actor))
+	   *actor-map*)
+  (maphash (lambda (id actor)
+	     ;; XXX camera
+	     (update-sprite-coords (actor-sprite actor)
+				   (actor-position actor))
+	     (funcall (actor-handler actor) id actor))
+	   *actor-map*))
 
 
 (defun check-collision (a b)
-  "Checks for horizontal and vertical collisions between actors a and b."
+  "Checks for horizontal and vertical collisions between actors a and
+b.  Uses the axis-aligned bounding boxes in ACTOR-BOX."
   (when (boxes-overlap-p (box-translate (actor-box a) (actor-position a))
 			 (box-translate (actor-box b) (actor-position b)))
-    ;;; XXX should check also for same/different velocities
-
     ;; it's a vertical collision if a is above b and either a has
     ;; positive y velocity, or b has negative y velocity.
-
     (cond ((and (<= (iso-point-y (actor-position a))
-		    (iso-point-y (actor-position b)))
+		    (- (iso-point-y (actor-position b))
+		       (/ (iso-point-y (box-dimensions (actor-box b)))
+			  2)))
 		(or (plusp (iso-point-y (actor-velocity a)))
 		    (minusp (iso-point-y (actor-velocity b)))))
-	   (format t "~&vertical collision!")
 	   (setf (actor-v-collision a) b))
+
+	  ;; XXX should check also for same/different velocities
 	  (t (setf (actor-h-collision a) b)))
     t))
 
 (defun check-wall-collision (actor)
   "Checks whether the actor is colliding with any walls."
+  (declare (ignore actor))
   nil)
 
 (defun check-floor-collision (actor)
   "Checks whether the actor is colliding with the floor, and sets
 their v-collision state accordingly."
-  (when (and (>= (iso-point-y (actor-position actor)) 0)
-	     (>= (iso-point-y (actor-velocity actor)) 0))
+  (when (and (>= (iso-point-y (actor-position actor)) 0) t)
+;	     (>= (iso-point-y (actor-velocity actor)) 0))
     (setf (actor-v-collision actor) :floor)))
 
 
@@ -82,12 +94,16 @@ their v-collision state accordingly."
   "Create a handler which updates an actor based on current input
 events."
   (lambda (id player)
+    (declare (ignore id))
     (when (event-pressedp :up)
-      (decf (iso-point-z (actor-position player)) 2))
+      (decf (iso-point-z (actor-velocity player)) 0.3))
     (when (event-pressedp :down)
-      (incf (iso-point-z (actor-position player)) 2))
+      (incf (iso-point-z (actor-velocity player)) 0.3))
     (when (event-pressedp :left)
-      (decf (iso-point-x (actor-position player)) 2))
+      (decf (iso-point-x (actor-velocity player)) 0.3))
     (when (event-pressedp :right)
-      (incf (iso-point-x (actor-position player)) 2))))
+      (incf (iso-point-x (actor-velocity player)) 0.3))
+    (when (event-pressedp :jump)
+      (decf (iso-point-y (actor-velocity player)) 1)
+      (decf (iso-point-y (actor-position player)) 2))))
 

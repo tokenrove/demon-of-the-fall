@@ -59,7 +59,7 @@
   (setf *global-sprite-list* nil))
 
 (defun destroy-sprite-manager ()
-  (loop for sprite in *global-sprite-list*
+  #+nil(loop for sprite in *global-sprite-list*
 	do (format t "~&Destroy sprite with image ~A." (sprite-image sprite))))
 
 (defun add-sprite-to-list (sprite)
