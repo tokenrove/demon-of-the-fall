@@ -1,3 +1,12 @@
+;;;
+;;; sprite.lisp -- Simple sprite management routines.
+;;;
+;;; The interface is here to provide animation facilities, but they're
+;;; currently unimplemented as I don't have any art to make use of
+;;; them.
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
 
 (in-package :vgdev-iso-cl)
 
@@ -14,17 +23,10 @@
    (animations :accessor sprite-animations)
    (x :accessor sprite-x)
    (y :accessor sprite-y)
-   (priority :accessor sprite-priority)))
+   (priority :accessor sprite-priority))
+  (:documentation "An animated display object, with a concept of
+priority and screen position."))
 
-(defun load-sprite (stream)
-  "Loads sprite data from STREAM."
-  (unwind-protect
-       (let* ((sprite (make-instance 'sprite)))
-	 (setf (sprite-image sprite)
-	       (load-image (read-line stream)))
-	 ;; read frames
-	 ;; read animations
-	 sprite)))
 
 (defun new-sprite-from-alist (alist)
   "Creates a new sprite from an alist with keys :image, :frames, and
@@ -34,7 +36,7 @@
 	  (load-image (cadr (assoc :image alist)) t))
     (setf (sprite-frames sprite) (cadr (assoc :frames alist)))
     (setf (sprite-animations sprite) (cadr (assoc :animations alist)))
-    (setf (sprite-x sprite) 0 (sprite-y sprite) 42 ; XXX
+    (setf (sprite-x sprite) 0 (sprite-y sprite) 42 ; XXX sane defaults?
 	  (sprite-priority sprite) 0)
     sprite))
 
@@ -43,6 +45,7 @@
   (multiple-value-bind (u v) (iso-project-point position)
     (setf (sprite-x sprite) u
 	  (sprite-y sprite) v
+	  ;; XXX priority formula isn't quite right
 	  (sprite-priority sprite) (- (iso-point-z position)
 				      (iso-point-y position)))))
 
@@ -67,7 +70,7 @@
   (push sprite *global-sprite-list*))
 
 (defun update-all-sprites ()
-  ;; XXX in priority order, draw sprites
+  ;; XXX could be a lot more efficient if we cared.
   (setf *global-sprite-list* (stable-sort *global-sprite-list*
 					  #'<=
 					  :key #'sprite-priority))

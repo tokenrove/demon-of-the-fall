@@ -1,10 +1,19 @@
+;;; actor.lisp -- Actor management code for Equinox-ish demo.
+;;;
+;;; Defines the actor class, deals with global actor list, actor
+;;; handlers, et cetera.
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
+
 
 (in-package :vgdev-iso-cl)
 
 ;;;; Actors
 
+;; XXX add documentation for these slots.
 (defclass actor ()
-  ((type :accessor actor-type)
+  ((type :reader actor-type)
    (sprite :accessor actor-sprite)
    (position :accessor actor-position)
    (velocity :accessor actor-velocity)
@@ -13,21 +22,39 @@
    (x-collision :accessor actor-x-collision)
    (y-collision :accessor actor-y-collision)
    (z-collision :accessor actor-z-collision)
-   (handler :accessor actor-handler)))
+   (handler :accessor actor-handler))
+  (:documentation "An ACTOR is an object that exists at the game-logic
+level persistently.  Actors have handlers that are called at each time
+slice in the game, handlers that are called in response to collisions,
+and physical properties."))
 
-(defvar *actor-map* (make-hash-table))
-(defvar *actor-id-counter* 0)
+(defvar *actor-map* (make-hash-table)
+  "Global hash of ID => ACTOR containing each actor ``alive'' in the
+game world.")
+(defvar *actor-id-counter* 0
+  "Actor unique ID counter, should always contain an ID which is not
+currently in use by any live actors.")
 
 (defun create-actor-manager ()
+  "function CREATE-ACTOR-MANAGER
+
+Initialize the global actor manager.  Note that this doesn't check
+whether it has previously been initialized."
   (setf *actor-map* (make-hash-table))
   (setf *actor-id-counter* 0))
 
 (defun manage-actor (actor)
+  "function MANAGE-ACTOR actor => id
+
+Register actor with actor manager."
   (setf (gethash *actor-id-counter* *actor-map*) actor)
   (prog1 *actor-id-counter*
     (incf *actor-id-counter*)))
 
 (defun unmanage-actor (id)
+  "function UNMANAGE-ACTOR id => boolean
+
+Remove the actor specified by id from the actor manager."
   (remhash id *actor-map*))
 
 (defparameter *actor-archetypes*
@@ -42,7 +69,7 @@
      (:handler
       create-human-input-handler))
     (:push-block
-     (:sprite 
+     (:sprite
       (:image "pblock-1.pcx")
       (:frames ((0 0 64 64)))
       (:animations ((:default (0 . 60)))))
@@ -50,17 +77,18 @@
       create-do-nothing-handler)
      (:box
       (0 0 0)
-      (64 32 64)))))
-
-(defun create-do-nothing-handler ()
-  (lambda (id actor) (declare (ignore id actor))))
+      (64 32 64))))
+  "The actor archetypes table, which defines the default values for
+many parameters of an actor.")
 
 (defun spawn-actor-from-archetype (name position)
-  "Creates (and returns) a new ACTOR instance, reading default member
+  "function SPAWN-ACTOR-FROM-ARCHETYPE name position => actor
+
+Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
   (let ((actor (make-instance 'actor))
 	(archetype (cdr (find name *actor-archetypes* :key #'car))))
-    (setf (actor-type actor) name)
+    (setf (slot-value actor 'type) name)
     (setf (actor-position actor) position)
     (setf (actor-handler actor)
 	  (funcall (cadr (assoc :handler archetype))))
@@ -81,29 +109,27 @@ values from *ACTOR-ARCHETYPES*."
     actor))
 
 
+(defun update-actor-collisions (id actor)
+  ;; Crude but simple n^2 collision checking.
+  (setf (actor-x-collision actor) nil)
+  (setf (actor-y-collision actor) nil)
+  (setf (actor-z-collision actor) nil)
+  (unless (eql (actor-type actor) :push-block)
+    (maphash (lambda (id-b actor-b)
+	       (unless (= id id-b)
+		 (check-collision actor actor-b)))
+	     *actor-map*))
+  (unless (actor-x-collision actor)
+    (check-wall-collision actor))
+  (unless (actor-y-collision actor)
+    (check-floor-collision actor)))
+
 (defun update-all-actors ()
   "Update collisions, physics, and handlers for all actors registered
 with the actor manager."
-  ;; Crude but simple n^2 collision checking.
-  (maphash (lambda (id-a actor-a)
-	     (setf (actor-x-collision actor-a) nil)
-	     (setf (actor-y-collision actor-a) nil)
-	     (setf (actor-z-collision actor-a) nil)
-	     (unless (eql (actor-type actor-a) :push-block)
-	       (maphash (lambda (id-b actor-b)
-			  (unless (= id-a id-b)
-			    (check-collision actor-a actor-b)))
-			*actor-map*))
-	     (unless (actor-x-collision actor-a)
-	       (check-wall-collision actor-a))
-	     (unless (actor-y-collision actor-a)
-	       (check-floor-collision actor-a)))
-	   *actor-map*)
   (maphash (lambda (id actor)
-	     (declare (ignore id))
-	     (update-physics actor))
-	   *actor-map*)
-  (maphash (lambda (id actor)
+	     (update-actor-collisions id actor)
+	     (update-physics actor)
 	     ;; XXX camera
 	     (update-sprite-coords (actor-sprite actor)
 				   (actor-position actor))
@@ -111,6 +137,7 @@ with the actor manager."
 	   *actor-map*))
 
 
+;;; XXX good god this needs refactoring
 (defun check-collision (a b)
   "Checks for horizontal and vertical collisions between actors a and
 b.  Uses the axis-aligned bounding boxes in ACTOR-BOX."
@@ -120,8 +147,7 @@ b.  Uses the axis-aligned bounding boxes in ACTOR-BOX."
     ;; positive y velocity, or b has negative y velocity.
     (cond ((and (<= (iso-point-y (actor-position a))
 		    (- (iso-point-y (actor-position b))
-		       (/ (iso-point-y (box-dimensions (actor-box b)))
-			  2)))
+		       (half (iso-point-y (box-dimensions (actor-box b))))))
 		;; This test is >= rather than plusp to allow an actor
 		;; to lie on the surface of another.
 		(or (>= (iso-point-y (actor-velocity a)) 0)
@@ -133,33 +159,35 @@ b.  Uses the axis-aligned bounding boxes in ACTOR-BOX."
 	  ;; it's an x collision.
 	  ((or (and (>= (iso-point-x (actor-position a))
 			(+ (iso-point-x (actor-position b))
-			   (/ (iso-point-x (box-dimensions (actor-box b)))
-			      2)))
+			   (half (iso-point-x (box-dimensions
+					       (actor-box b))))))
 		    (or (minusp (iso-point-x (actor-velocity a)))
 			(plusp (iso-point-x (actor-velocity b)))))
 	       (and (<= (iso-point-x (actor-position a))
 			(+ (iso-point-x (actor-position b))
-			   (/ (iso-point-x (box-dimensions (actor-box b)))
-			      2)))
+			   (half (iso-point-x (box-dimensions
+					       (actor-box b))))))
 		    (or (plusp (iso-point-x (actor-velocity a)))
 			(minusp (iso-point-x (actor-velocity b))))))
 	     (setf (actor-x-collision a) b))
 
 	   ((or (and (>= (iso-point-z (actor-position a))
 			(+ (iso-point-z (actor-position b))
-			   (/ (iso-point-z (box-dimensions (actor-box b)))
-			      2)))
+			   (half (iso-point-z (box-dimensions
+					       (actor-box b))))))
 		    (or (minusp (iso-point-z (actor-velocity a)))
 			(plusp (iso-point-z (actor-velocity b)))))
 	       (and (<= (iso-point-z (actor-position a))
 			(+ (iso-point-z (actor-position b))
-			   (/ (iso-point-z (box-dimensions (actor-box b)))
-			      2)))
+			   (half (iso-point-z (box-dimensions
+					       (actor-box b))))))
 		    (or (plusp (iso-point-z (actor-velocity a)))
 			(minusp (iso-point-z (actor-velocity b))))))
 	    (setf (actor-z-collision a) b)))
     t))
 
+
+;;; XXX nop
 (defun check-wall-collision (actor)
   "Checks whether the actor is colliding with any walls."
   (declare (ignore actor))
@@ -174,6 +202,10 @@ their v-collision state accordingly."
 
 
 ;;;; Handlers
+
+(defun create-do-nothing-handler ()
+  "Create an actor handler which does nothing."
+  (lambda (id actor) (declare (ignore id actor))))
 
 (defun create-human-input-handler ()
   "Create a handler which updates an actor based on current input

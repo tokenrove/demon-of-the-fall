@@ -1,21 +1,22 @@
+;;;
+;;; physics.lisp -- Physics routines.
+;;;
+;;; Totally fucked at the moment.  Needs to be reworked to deal with
+;;; arbitrary frame timings.
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
 
 (in-package :vgdev-iso-cl)
 
-(defparameter *air-friction* 0.1)
-(defparameter *ground-friction* 0.25)
-(defparameter *gravity* 1.5)
-
-(defmacro sinkf (place value)
-  "Sink the value of PLACE by VALUE, reducing to zero if |PLACE| <=
-|VALUE|."
-  (let ((gplace (gensym))
-	(gval (gensym)))
-    `(let ((,gval ,value)
-	   (,gplace ,place))
-      (cond ((>= (abs ,gval) (abs ,gplace)) (setf ,place 0))
-	    ((or (and (plusp ,gplace) (plusp ,gval))
-		 (and (minusp ,gplace) (minusp ,gval))) (decf ,place ,gval))
-	    (t (incf ,place ,gval))))))
+;;; XXX Each of these constants is totally arbitrary.
+(defparameter *air-friction* 0.1
+  "Resistance against actors while in the air.")
+(defparameter *ground-friction* 0.25
+  "Friction on the floor.  Note that this parameter will not be here
+forever as friction becomes delegated to surfaces.")
+(defparameter *gravity* 1.5
+  "Gravity affecting actors.")
 
 (defun update-physics (actor)
   "Update simple kinematics, friction, collision response on the given
@@ -41,8 +42,8 @@ update position and velocity according to collisions."
 		 (if (< (+ (iso-point-x (actor-position a))
 			   (iso-point-x (box-dimensions (actor-box a))))
 			(+ (iso-point-x (actor-position axc))
-			   (/ (iso-point-x (box-dimensions (actor-box axc)))
-			      2)))
+			   (half (iso-point-x (box-dimensions
+					       (actor-box axc))))))
 		     (- (iso-point-x (actor-position axc))
 			(iso-point-x (box-dimensions (actor-box a))))
 		     (+ (iso-point-x (actor-position axc))
@@ -57,8 +58,8 @@ update position and velocity according to collisions."
 		 (if (< (+ (iso-point-z (actor-position a))
 			   (iso-point-z (box-dimensions (actor-box a))))
 			(+ (iso-point-z (actor-position azc))
-			   (/ (iso-point-z (box-dimensions (actor-box azc)))
-			      2)))
+			   (half (iso-point-z (box-dimensions
+					       (actor-box azc))))))
 		     (- (iso-point-z (actor-position azc))
 			(iso-point-z (box-dimensions (actor-box a))))
 		     (+ (iso-point-z (actor-position azc))
@@ -71,7 +72,9 @@ update position and velocity according to collisions."
   (let ((ayc (actor-y-collision a)))
     (cond ((null ayc)			; in the air
 	   (sinkf (iso-point-y (actor-velocity a)) *air-friction*)
-	   (incf (iso-point-y (actor-velocity a)) *gravity*))
+	   (incf (iso-point-y (actor-velocity a)) *gravity*)
+	   (sinkf (iso-point-x (actor-velocity a)) *air-friction*)
+	   (sinkf (iso-point-z (actor-velocity a)) *air-friction*))
 	  ((eql ayc :floor)		; ground
 	   ;; XXX call floor handler dynamically
 	   (setf (iso-point-y (actor-velocity a)) 0)

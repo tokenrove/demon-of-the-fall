@@ -1,3 +1,9 @@
+;;;
+;;; main.lisp -- Main game loop for Equinox-ish demo.
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
+
 
 (in-package :vgdev-iso-cl)
 
@@ -8,14 +14,17 @@ that the display must already have been created."
   (create-sprite-manager)
   (create-actor-manager)
 
-  (let ((player (spawn-actor-from-archetype :glen (make-iso-point)))
-	(floor-img (load-image "pfloor-1.pcx" t))
+  (let ((floor-img (load-image "pfloor-1.pcx" t))
 	(fps-count (cons 0 (sdl:get-ticks))))
 
     (load-default-font "Jagged Dreams.ttf" 18)
-    (use-image-palette (sprite-image (actor-sprite player)))
+
+    ;; XXX this stuff will all go in level-loading
+    (use-image-palette floor-img)
+    (spawn-actor-from-archetype :glen (make-iso-point))
     (spawn-actor-from-archetype :push-block
 				(make-iso-point :z -64))
+
     (loop
      (sync-start-frame)
      (event-update)
@@ -27,9 +36,7 @@ that the display must already have been created."
      (fill-background 255)
      (paint-floor floor-img)
 
-     ;; Actors
      (update-all-actors)
-     ;; Sprites
      (update-all-sprites)
 
      ;; OSD

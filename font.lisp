@@ -1,7 +1,16 @@
+;;;
+;;; font.lisp -- Simple font routines.
+;;;
+;;; Uses SDL-TTF to do very primitive font things.  This is all pretty
+;;; ugly, but who really cares about fonts?
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
 
 (in-package :vgdev-iso-cl)
 
-(defvar *default-font*)
+(defvar *default-font* nil
+  "The font used by PAINT-STRING, loaded via LOAD-DEFAULT-FONT.")
 
 (defun font-init ()
   "This must be called before any other font routines are used."
@@ -10,7 +19,8 @@
 (defun paint-string (string x y r g b)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
   (cl-sdl-ttf:with-solid-text (sface *default-font* string r g b)
-    (sgum:with-foreign-objects ((rect sdl:rect))
+    ;;; XXX needs type fix
+    (sgum:with-foreign-objects ((rect 'sdl:rect))
       (setf (sdl:rect-x rect) x
 	    (sdl:rect-y rect) y)
       (sdl:blit-surface sface nil *vbuffer* rect))))

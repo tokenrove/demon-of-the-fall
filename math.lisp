@@ -1,5 +1,40 @@
+;;;
+;;; math.lisp -- Math and computational geometry routines.
+;;;
+;;; Contains some physics helpers, convenience macros, isometric
+;;; projection stuff, low-level collision detection routines.
+;;; Lots of refactoring is needed here.
+;;;
+;;; Author: Julian Squires <tek@wiw.org> / 2004
+;;;
 
 (in-package :vgdev-iso-cl)
+
+;;;; Generic
+
+(defmacro sinkf (place value)
+  "Sink the value of PLACE by VALUE, reducing to zero if |PLACE| <=
+|VALUE|."
+  (let ((gplace (gensym))
+	(gval (gensym)))
+    `(let ((,gval ,value)
+	   (,gplace ,place))
+      (cond ((>= (abs ,gval) (abs ,gplace)) (setf ,place 0))
+	    ((or (and (plusp ,gplace) (plusp ,gval))
+		 (and (minusp ,gplace) (minusp ,gval))) (decf ,place ,gval))
+	    (t (incf ,place ,gval))))))
+
+;; Note that we could add compiler macros here to do things like
+;; precompute constant values, and use ash instead of / when the type
+;; is integer.
+(defmacro half (x)
+  "Convenience division macro."
+  `(/ ,x 2))
+
+(defmacro quarter (x)
+  "Convenience division macro."
+  `(/ ,x 4))
+
 
 ;;;; Isometric fu
 
@@ -12,11 +47,11 @@
 (defun iso-project-point (p)
   "Project a world coordinate (3D) point onto screen coordinates.
 Returns two values, X and Y in screen coordinates."
-  (let ((sx (+ (/ (iso-point-x p) 2) (/ (iso-point-z p) 2)))
+  (let ((sx (+ (half (iso-point-x p)) (half (iso-point-z p))))
 	(sy (+ (iso-point-y p)
-	       (- (/ (iso-point-z p) 4)
-		  (/ (iso-point-x p) 4)))))
-    (setf sx (+ (round sx) (ash (display-width) -1)))
+	       (- (quarter (iso-point-z p))
+		  (quarter (iso-point-x p))))))
+    (setf sx (+ (round sx) (half (display-width))))
     (setf sy (round (+ sy (display-height))))
     (values sx sy)))
 
@@ -30,15 +65,25 @@ Returns two values, X and Y in screen coordinates."
    :dimensions (box-dimensions box)))
 
 
+(defun extents-penetrate-p (a1 a2 b1 b2)
+  (when (> a1 a2) (psetf a1 a2 a2 a1))
+  (when (> b1 b2) (psetf b1 b2 b2 b1))
+  (when (< a1 b1) (setf a1 b1))
+  (when (> a2 b2) (setf a2 b2))
+  (< a1 a2))
+
+(defun extents-contact-p (a1 a2 b1 b2)
+  (when (> a1 a2) (psetf a1 a2 a2 a1))
+  (when (> b1 b2) (psetf b1 b2 b2 b1))
+  (when (< a1 b1) (setf a1 b1))
+  (when (> a2 b2) (setf a2 b2))
+  (<= a1 a2))
+
 (defun extents-overlap-p (a1 a2 b1 b2)
-  (when (> a1 a2)
-    (let ((tmp a1)) (setf a1 a2 a2 tmp)))
-  (when (> b1 b2)
-    (let ((tmp b1)) (setf b1 b2 b2 tmp)))
-  (when (< a1 b1)
-    (setf a1 b1))
-  (when (> a2 b2)
-    (setf a2 b2))
+  (when (> a1 a2) (psetf a1 a2 a2 a1))
+  (when (> b1 b2) (psetf b1 b2 b2 b1))
+  (when (< a1 b1) (setf a1 b1))
+  (when (> a2 b2) (setf a2 b2))
   (< a1 a2))
 
 (defun boxes-overlap-p (a b)
