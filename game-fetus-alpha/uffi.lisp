@@ -20,6 +20,27 @@ NIL.  Returns the pointer itself otherwise."
 (defun bool->int (pred) (if pred 1 0))
 
 
+(defmacro with-foreign-objects (bindings &rest body)
+  #+(or cmu scl)
+  `(alien:with-alien ,bindings
+     ,@body)
+  #+sbcl
+  `(sb-alien:with-alien ,bindings
+     ,@body)
+  #-(or cmu scl sbcl)
+  `(uffi:with-foreign-objects ,bindings
+     ,@body))
+
+(defmacro pointer-to-object (object)
+  #+(or cmu scl) `(alien:alien-sap ,object)
+  #+sbcl `(sb-alien:alien-sap ,object)
+  #-(or cmu scl sbcl) object)
+
+(defmacro maybe-quote-type (type)
+  #+(or cmu scl sbcl) type
+  #-(or cmu scl sbcl) 'type)
+
+
 ;;;; GRAPHICS
 
 ;; Careful!  This should correspond with the C SDL_Rect type.
@@ -127,18 +148,6 @@ NIL.  Returns the pointer itself otherwise."
 (def-function "ll_event_init" () :returning :void :module "low-level")
 (declaim (inline ll-event-shutdown))
 (def-function "ll_event_shutdown" () :returning :void :module "low-level")
-
-
-(declaim (inline ll-poll-event-stub ll-event-type ll-event-axis
-		 ll-event-value))
-(def-function "ll_poll_event_stub" ()
-  :returning :int :module "low-level")
-(def-function "ll_event_type" ()
-  :returning :int :module "low-level")
-(def-function "ll_event_axis" ()
-  :returning :int :module "low-level")
-(def-function "ll_event_value" ()
-  :returning :int :module "low-level")
 
 (declaim (inline ll-poll-event))
 (def-function "ll_poll_event" ((event (* ll-event)))

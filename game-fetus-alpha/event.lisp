@@ -55,6 +55,7 @@
 
 
 ;; Hopefully these can stay hidden from the user.
+(declaim (inline event-type event-axis event-value))
 (defun event-type (event)
   (if event
       #-openmcl(get-slot-value event 'll-event 'type)
@@ -96,45 +97,48 @@ an interruption or similar."
   "function EVENT-UPDATE
 
 Checks for events, updates internal input state."
-  (do* ((rv #1=(ll-poll-event-stub) #1#)
-	(event nil))
-       ((= rv 0))
-    (cond ((= (event-type event) +ll-event-key-down+)
-	   (awhen (gethash (event-value event) *xlate-symbol->map-idx*)
-	     (setf (bit *event-map* it) 1)))
-	  ((= (event-type event) +ll-event-key-up+)
-	   (awhen (gethash (event-value event) *xlate-symbol->map-idx*)
-	     (setf (bit *event-map* it) 0)))
-	  ((= (event-type event) +ll-event-joy-move+)
-	   (case (event-axis event)
-	     (0 (cond ((plusp (event-value event))
-		       (setf (bit *event-map* +ev-right+) 1
-			     (bit *event-map* +ev-left+) 0))
-		      ((minusp (event-value event))
-		       (setf (bit *event-map* +ev-right+) 0
-			     (bit *event-map* +ev-left+) 1))
-		      (t
-		       (setf (bit *event-map* +ev-right+) 0
-			     (bit *event-map* +ev-left+) 0))))
-	     (1 (cond ((plusp (event-value event))
-		       (setf (bit *event-map* +ev-down+) 1
-			     (bit *event-map* +ev-up+) 0))
-		      ((minusp (event-value event))
-		       (setf (bit *event-map* +ev-down+) 0
-			     (bit *event-map* +ev-up+) 1))
-		      (t
-		       (setf (bit *event-map* +ev-down+) 0
-			     (bit *event-map* +ev-up+) 0))))))
-	    ((= (event-type event) +ll-event-joy-button-down+)
-	     (awhen (case (event-value event)
-		      (0 +ev-button-a+)
-		      (1 +ev-button-b+))
-	       (setf (bit *event-map* it) 1)))
-	    ((= (event-type event) +ll-event-joy-button-up+)
-	     (awhen (case (event-value event)
-		      (0 +ev-button-a+)
-		      (1 +ev-button-b+))
-	       (setf (bit *event-map* it) 0))))))
+  (with-foreign-objects ((event ll-event))
+    (do* ((rv #1=(ll-poll-event (pointer-to-object event)) #1#))
+	 ((= rv 0))
+      (let ((type (get-slot-value event 'll-event 'type))
+	    (value (get-slot-value event 'll-event 'value))
+	    (axis (get-slot-value event 'll-event 'axis)))
+	(cond ((= type +ll-event-key-down+)
+	       (awhen (gethash value *xlate-symbol->map-idx*)
+		 (setf (bit *event-map* it) 1)))
+	      ((= type +ll-event-key-up+)
+	       (awhen (gethash value *xlate-symbol->map-idx*)
+		 (setf (bit *event-map* it) 0)))
+	      ((= type +ll-event-joy-move+)
+	       (case axis
+		 (0 (cond ((plusp value)
+			   (setf (bit *event-map* +ev-right+) 1
+				 (bit *event-map* +ev-left+) 0))
+			  ((minusp value)
+			   (setf (bit *event-map* +ev-right+) 0
+				 (bit *event-map* +ev-left+) 1))
+			  (t
+			   (setf (bit *event-map* +ev-right+) 0
+				 (bit *event-map* +ev-left+) 0))))
+		 (1 (cond ((plusp value)
+			   (setf (bit *event-map* +ev-down+) 1
+				 (bit *event-map* +ev-up+) 0))
+			  ((minusp value)
+			   (setf (bit *event-map* +ev-down+) 0
+				 (bit *event-map* +ev-up+) 1))
+			  (t
+			   (setf (bit *event-map* +ev-down+) 0
+				 (bit *event-map* +ev-up+) 0))))))
+	      ((= type +ll-event-joy-button-down+)
+	       (awhen (case value
+			(0 +ev-button-a+)
+			(1 +ev-button-b+))
+		 (setf (bit *event-map* it) 1)))
+	      ((= type +ll-event-joy-button-up+)
+	       (awhen (case value
+			(0 +ev-button-a+)
+			(1 +ev-button-b+))
+		 (setf (bit *event-map* it) 0))))))))
 
 
 (defun event-pressedp (event)
@@ -144,6 +148,7 @@ Checks for events, updates internal input state."
 
 (defun get-key-event ()
   (with-foreign-object (event 'll-event)
+    (declare (dynamic-extent event))
     (do ((rv #1=(ll-wait-event event) #1#))
 	((= rv 0))
       (let ((type (event-type event)))

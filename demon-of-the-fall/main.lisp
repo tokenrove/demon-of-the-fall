@@ -50,17 +50,25 @@ given ROOM.  Note that the display must already have been created."
 	   (when (fetus:event-pressedp fetus:+ev-quit+)
 	     (return))
 
-	   (when (equinox:check-room-change sprite-manager)
-	     (fetus:destroy-sprite-manager sprite-manager)
-	     (setf sprite-manager (fetus:create-sprite-manager
-				   #'equinox:isometric-sprite-cmp)))
+	   ;; XXX: ugly hack.
+	   (multiple-value-bind (room point)
+	       (equinox:check-room-change)
+	     (when room
+	       (fetus:destroy-sprite-manager sprite-manager)
+	       (setf sprite-manager (fetus:create-sprite-manager
+				     #'equinox:isometric-sprite-cmp))
+	       (equinox:create-actor-manager)
+	       (equinox:load-room room sprite-manager)
+	       (setf equinox::*camera-follow*
+		     (equinox:spawn-actor-from-archetype :peter point
+							 sprite-manager))))
 
 	   (update-camera equinox::*camera-follow*)
 	   (equinox:update-all-actors 20)
 	   (equinox:room-redraw)
 	   (fetus:update-all-sprites sprite-manager)
 
-	   (paint-osd font)
+	   ;(paint-osd font)
 	   (fetus:refresh-display)
 
 	   (fetus:timer-end-frame)
