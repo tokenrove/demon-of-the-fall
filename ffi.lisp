@@ -20,7 +20,7 @@ NIL.  Returns the pointer itself otherwise."
 ;;;; GRAPHICS
 
 ;; Careful!  This should correspond with the C SDL_Rect type.
-(def-struct gfx-rect (x :short) (y :short)
+#-openmcl(def-struct gfx-rect (x :short) (y :short)
 	    (w :unsigned-short) (h :unsigned-short))
 
 (declaim (inline ll-gfx-init))
@@ -69,7 +69,7 @@ NIL.  Returns the pointer itself otherwise."
   :returning :void :module "low-level")
 
 (declaim (inline ll-gfx-blit-surface))
-(def-function "ll_gfx_blit_surface" ((src :pointer-void)
+#-openmcl(def-function "ll_gfx_blit_surface" ((src :pointer-void)
 				     (srect (* gfx-rect))
 				     (dst :pointer-void)
 				     (drect (* gfx-rect)))
@@ -93,7 +93,7 @@ NIL.  Returns the pointer itself otherwise."
 				   (color :int))
   :returning :void :module "low-level")
 (declaim (inline ll-gfx-fill-rect))
-(def-function "ll_gfx_fill_rect" ((sface :pointer-void)
+#-openmcl(def-function "ll_gfx_fill_rect" ((sface :pointer-void)
 				  (rect (* gfx-rect))
 				  (color :int))
   :returning :void :module "low-level")

@@ -7,12 +7,13 @@
 
 (in-package :vgdev-iso-cl)
 
-(defconstant +ev-quit+ 0)
-(defconstant +ev-up+ 1)
-(defconstant +ev-down+ 2)
-(defconstant +ev-left+ 3)
-(defconstant +ev-right+ 4)
-(defconstant +ev-jump+ 5)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defconstant +ev-quit+ 0)
+  (defconstant +ev-up+ 1)
+  (defconstant +ev-down+ 2)
+  (defconstant +ev-left+ 3)
+  (defconstant +ev-right+ 4)
+  (defconstant +ev-jump+ 5))
 
 ;; XXX it would be nice if this table used keysym names, rather than
 ;; hardcoded constants.
@@ -38,20 +39,28 @@
 (defun wipe-events ()
   (setf *event-map* (bit-xor *event-map* *event-map*)))
 
+(defun event-type (event)
+  #-openmcl(get-slot-value event 'll-event 'type)
+  #+openmcl(get-slot-value event ll-event type))
+
+(defun event-keysym (event)
+  #-openmcl(get-slot-value event 'll-event 'keysym)
+  #+openmcl(get-slot-value event ll-event keysym))
+
 (defun event-update ()
   "function EVENT-UPDATE
 
 Refresh the state of *EVENT-MAP*."
   (with-foreign-object (event 'll-event)
     (do* ((rv #1=(ll-poll-event event) #1#)
-	  (type #2=(get-slot-value event 'll-event 'type) #2#))
+	  (type #2=(event-type event) #2#))
 	 ((= rv 0))
       (cond ((= type +ll-event-key-down+)
-	     (awhen (gethash (get-slot-value event 'll-event 'keysym)
+	     (awhen (gethash (event-keysym event)
 			     *xlate-symbol->map-idx*)
 		    (setf (bit *event-map* it) 1)))
 	    ((= type +ll-event-key-up+)
-	     (awhen (gethash (get-slot-value event 'll-event 'keysym)
+	     (awhen (gethash (event-keysym event)
 			     *xlate-symbol->map-idx*)
 		    (setf (bit *event-map* it) 0)))))))
 

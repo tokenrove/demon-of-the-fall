@@ -21,28 +21,31 @@
 
 (defun paint-string (string x y r g b)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
-  (let ((sface (maybe-null->nil
-		(ll-font-render-solid *default-font* string r g b))))
-    (when sface
-      (blit-image sface x (+ y (surface-h sface)))
-      (free-image sface))))
+  (with-cstring (cstring string)
+    (let ((sface (maybe-null->nil
+		  (ll-font-render-solid *default-font* cstring r g b))))
+      (when sface
+	(blit-image sface x (+ y (surface-h sface)))
+	(free-image sface)))))
 
 (defun paint-blended-string (string x y r g b)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
-  (let ((sface (maybe-null->nil
-		(ll-font-render-blended *default-font* string r g b))))
-    (when sface
-      (blit-image sface x (+ y (surface-h sface)))
-      (free-image sface))))
+  (with-cstring (cstring string)
+    (let ((sface (maybe-null->nil
+		  (ll-font-render-blended *default-font* cstring r g b))))
+      (when sface
+	(blit-image sface x (+ y (surface-h sface)))
+	(free-image sface)))))
 
 (defun paint-shaded-string (string x y r1 g1 b1 r2 g2 b2)
   "Paints STRING on *VBUFFER* using *DEFAULT-FONT*, at position (X,Y)."
-  (let ((sface (maybe-null->nil
-		(ll-font-render-shaded *default-font* string r1 g1 b1
-				       r2 g2 b2))))
-    (when sface
-      (blit-image sface x (+ y (surface-h sface)))
-      (free-image sface))))
+  (with-cstring (cstring string)
+    (let ((sface (maybe-null->nil
+		  (ll-font-render-shaded *default-font* cstring r1 g1 b1
+					 r2 g2 b2))))
+      (when sface
+	(blit-image sface x (+ y (surface-h sface)))
+	(free-image sface)))))
 
 (defun destroy-font ()
   "Frees *DEFAULT-FONT* appropriately."
@@ -52,4 +55,5 @@
 
 (defun load-default-font (file &optional (ptsize 12))
   "Loads FILE as *DEFAULT-FONT*."
-  (setf *default-font* (maybe-null->nil (ll-font-open file ptsize))))
+  (with-cstring (name file)
+    (setf *default-font* (maybe-null->nil (ll-font-open name ptsize)))))

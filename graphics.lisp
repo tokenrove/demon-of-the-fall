@@ -48,25 +48,21 @@ option on undebugged code!)."
   "Fill the screen with a solid color."
   (ll-gfx-fill-rect-stub destination 0 0 -1 0 color))
 
-(defun rectangle-set (rect x y w h)
+#-openmcl (defun rectangle-set (rect x y w h)
   "Convenience function to set a gfx-rect's members in one swoop."
   (setf (get-slot-value rect 'gfx-rect 'x) x
 	(get-slot-value rect 'gfx-rect 'y) y
 	(get-slot-value rect 'gfx-rect 'w) w
 	(get-slot-value rect 'gfx-rect 'h) h))
 
-(defun rect-x (rect) (get-slot-value rect 'gfx-rect 'x))
-(defun rect-y (rect) (get-slot-value rect 'gfx-rect 'y))
-(defun rect-w (rect) (get-slot-value rect 'gfx-rect 'w))
-(defun rect-h (rect) (get-slot-value rect 'gfx-rect 'h))
-
 (defun load-image (filename &optional (colorkeyp nil))
   "function LOAD-IMAGE filename &optional colorkeyp => image
 
 Load an image (in pretty much any sane format), optionally with color
 zero flagged as transparent (when colorkeyp)."
-  (and filename (maybe-null->nil (ll-gfx-load-image filename
-						    (bool->int colorkeyp)))))
+  (with-cstring (name filename)
+    (and filename
+	 (maybe-null->nil (ll-gfx-load-image name (bool->int colorkeyp))))))
 
 (defun free-image (image) (when image (ll-gfx-free-surface image)))
 

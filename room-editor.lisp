@@ -434,9 +434,9 @@ given ROOM.  Note that the display must already have been created."
   (with-foreign-object (event 'll-event)
     (do ((rv #1=(ll-wait-event event) #1#))
 	((= rv 0))
-      (let ((type (get-slot-value event 'll-event 'type)))
+      (let ((type (event-type event)))
 	(cond ((= type +ll-event-key-down+)
-	       (return (get-slot-value event 'll-event 'keysym))))))))
+	       (return (event-keysym event))))))))
 
 (defun editor-yes-no-prompt (message)
   (loop

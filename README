@@ -10,6 +10,20 @@ implementation of functions in C due to an insane number of
 FFI-related hassles I was having, particularly to do with efficiency.
 
 
+Status of support for various lisp implementations:
+
+* OpenMCL -- definitely the fastest (perfect framerate, no GC pauses),
+but pretty horrible for debugging.  Should work fine for normal use,
+though.
+
+* SBCL on Linux/PPC -- one of my standard development platforms.
+Wretched GC pauses.
+
+* CMUCL on Linux/x86 -- lots of GC pauses at the moment, but should be
+the most stable, as it is the platform on which most development is
+done.
+
+
 
 Caveats to level designers:
 
