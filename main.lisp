@@ -11,11 +11,17 @@
 (defvar *magic-exit-hack* nil)
 (defvar *exit-counter* 0)
 
+
 (defun first-init ()
   "Called when we first start."
   (create-display)
+  (event-init)
   (initialize-actor-data)
   (initialize-room-data))
+
+(defun final-shutdown ()
+  (event-shutdown)
+  (destroy-display))
 
 
 (defun in-game-loop (starting-room)
@@ -26,9 +32,11 @@ given ROOM.  Note that the display must already have been created."
   (create-sprite-manager)
   (create-actor-manager)
   (wipe-events)
+  (setf *magic-exit-hack* nil
+	*exit-counter* 0)
 
   (let ((fps-count (cons 0 (timer-get-ticks))))
-    (load-default-font "spn.ttf" 24)
+    (load-default-font "other-data/spn.ttf" 24)
     (load-room starting-room)
 
     ;; spawn the player, have the camera follow it.

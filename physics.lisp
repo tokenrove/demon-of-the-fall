@@ -31,7 +31,6 @@ actor."
   (incf (iso-point-z (actor-position a)) (iso-point-z (actor-velocity a)))
   (incf (iso-point-y (actor-position a)) (iso-point-y (actor-velocity a)))
 
-
   (detect-collisions a)
   ;;; call contact handlers?
 
@@ -259,9 +258,24 @@ actor."
     separation))
 
 (defun penetrating-p (alice bob)
-  (let ((alice-box (box-translate (actor-box alice)
-				  (actor-position alice)))
-	(bob-box (box-translate (actor-box bob)
-				(actor-position bob))))
-    (boxes-overlap-p alice-box bob-box)))
+  (declare (type actor alice bob))
+  (actor-pen-p (actor-position alice)
+	       (box-dimensions (actor-box alice))
+	       (actor-position bob)
+	       (box-dimensions (actor-box bob))))
+
+(defun actor-pen-p (a-pos a-dim b-pos b-dim)
+  (declare (type iso-point a-pos a-dim b-pos b-dim))
+  (and (let ((xa (iso-point-x a-pos))
+	     (xb (iso-point-x b-pos)))
+	 (extents-overlap-p xa (+ xa (iso-point-x a-dim))
+			    xb (+ xb (iso-point-x b-dim))))
+       (let ((ya (iso-point-y a-pos))
+	     (yb (iso-point-y b-pos)))
+	 (extents-overlap-p ya (+ ya (iso-point-y a-dim))
+			    yb (+ yb (iso-point-y b-dim))))
+       (let ((za (iso-point-z a-pos))
+	     (zb (iso-point-z b-pos)))
+	 (extents-overlap-p za (+ za (iso-point-z a-dim))
+			    zb (+ zb (iso-point-z b-dim))))))
 

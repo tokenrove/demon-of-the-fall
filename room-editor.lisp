@@ -65,7 +65,7 @@ cursor point, NIL otherwise."
   "Interactive level editor on the current display, affecting the
 given ROOM.  Note that the display must already have been created."
   (font-init)
-  (load-default-font "pph.ttf" 18)
+  (load-default-font "other-data/pph.ttf" 18)
   (initialize-tiles)
   (create-sprite-manager)
   (load-room room-to-edit :spawn-actors-p nil)
@@ -436,7 +436,7 @@ given ROOM.  Note that the display must already have been created."
 	((= rv 0))
       (let ((type (event-type event)))
 	(cond ((= type +ll-event-key-down+)
-	       (return (event-keysym event))))))))
+	       (return (event-value event))))))))
 
 (defun editor-yes-no-prompt (message)
   (loop

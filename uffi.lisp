@@ -109,11 +109,32 @@ NIL.  Returns the pointer itself otherwise."
 
 (def-struct ll-event
     (type :int)
-  (keysym :int))
+  (value :int)
+  (axis :int))
 
 ;; XXX should grovel or something.  This will do for now.
 (defconstant +ll-event-key-down+ 2)
 (defconstant +ll-event-key-up+ 3)
+(defconstant +ll-event-joy-move+ 4)
+(defconstant +ll-event-joy-button-down+ 5)
+(defconstant +ll-event-joy-button-up+ 6)
+
+(declaim (inline ll-event-init))
+(def-function "ll_event_init" () :returning :void :module "low-level")
+(declaim (inline ll-event-shutdown))
+(def-function "ll_event_shutdown" () :returning :void :module "low-level")
+
+
+(declaim (inline ll-poll-event-stub ll-event-type ll-event-axis
+		 ll-event-value))
+(def-function "ll_poll_event_stub" ()
+  :returning :int :module "low-level")
+(def-function "ll_event_type" ()
+  :returning :int :module "low-level")
+(def-function "ll_event_axis" ()
+  :returning :int :module "low-level")
+(def-function "ll_event_value" ()
+  :returning :int :module "low-level")
 
 (declaim (inline ll-poll-event))
 (def-function "ll_poll_event" ((event (* ll-event)))

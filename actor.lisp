@@ -178,7 +178,7 @@ events."
     (when (event-pressedp +ev-right+)
       (apply-impulse player :z -0.5)
       (set-sprite-animation (actor-sprite player) :walk-east))
-    (when (and (event-pressedp +ev-jump+)
+    (when (and (event-pressedp +ev-button-a+)
 	       (actor-contact-surface player))
       (apply-impulse player :y 6))))
 

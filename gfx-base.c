@@ -16,7 +16,7 @@ void* ll_gfx_init(int fullscreen, int width, int height, int bpp)
     int modeflags;
     SDL_Surface* vbuffer;
 
-    assert(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_TIMER) == 0);
+    assert(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO|SDL_INIT_TIMER|SDL_INIT_JOYSTICK) == 0);
     atexit(SDL_Quit);
 
     modeflags = SDL_HWSURFACE|SDL_SWSURFACE|SDL_DOUBLEBUF|SDL_HWPALETTE;

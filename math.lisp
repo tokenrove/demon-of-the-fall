@@ -149,12 +149,16 @@ camera positioning."
   (when (> a2 b2) (setf a2 b2))
   (<= a1 a2))
 
+(declaim (inline extents-overlap-p))
 (defun extents-overlap-p (a1 a2 b1 b2)
+  (declare (type number a1 a2 b1 b2))
+  (and (> a2 b1) (> b2 a1)))
+#| old, safer version:
   (when (> a1 a2) (psetf a1 a2 a2 a1))
   (when (> b1 b2) (psetf b1 b2 b2 b1))
   (when (< a1 b1) (setf a1 b1))
   (when (> a2 b2) (setf a2 b2))
-  (< a1 a2))
+  (< a1 a2)) |#
 
 (defun boxes-overlap-p (a b)
   (and (let ((xa (iso-point-x (box-position a)))

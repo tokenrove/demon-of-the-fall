@@ -116,7 +116,7 @@
       monster-contact-handler))
     (:apple
      (:sprite
-      (:image "apple.pcx")
+      (:image "other-data/apple.pcx")
       (:blit-offset (0 . 0))
       (:frames ((0 0 16 16)))
       (:animations ((:default (0 . 60)))))
@@ -129,7 +129,7 @@
       (8 8 8)))
     (:dagger
      (:sprite
-      (:image "dagger.pcx")
+      (:image "other-data/dagger.pcx")
       (:blit-offset (0 . 0))
       (:frames ((0 0 16 16)))
       (:animations ((:default (0 . 60)))))

@@ -1,13 +1,15 @@
 
-vgdev-iso-cl
-Julian Squires <tek@wiw.org> / 2004
+DEMON OF THE FALL
+Copyright 2004 Julian Squires and Matthew Riche
 
 
-This project needs a better name.  Right now, I suppose it all
-qualifies as a crude hack -- there's a lot of refactoring to be done.
-This originally used CL-SDL, but I switched to my own minimal
-implementation of functions in C due to an insane number of
-FFI-related hassles I was having, particularly to do with efficiency.
+STATUS
+
+Right now, I suppose it all qualifies as a crude hack -- there's a lot
+of refactoring to be done.  This originally used CL-SDL, but I
+switched to my own minimal implementation of functions in C due to an
+insane number of FFI-related hassles I was having, particularly to do
+with efficiency.
 
 
 Status of support for various lisp implementations:
@@ -20,6 +22,9 @@ though.
 the most stable, as it is the platform on which most development is
 done.
 
+
+DATA FILES
+
 * SBCL on Linux/PPC -- one of my standard development platforms.
 Wretched GC pauses.
 
@@ -31,6 +36,9 @@ it will be usable.
 the FFI here, I will try to have this running; currently it's a no-go
 due to lack of UFFI support.
 
+Anything in ret-data/ is (effectively) created by Retsyn.
+Anything in other-data/ has been obtained from other sources, as
+placeholders, and must be removed before the game is released.
 
 
 Caveats to level designers:
