@@ -6,7 +6,7 @@
 (defsystem demon-of-the-fall
     :depends-on (:game-fetus-alpha :aequus-noctis :anaphora)
     :components
-    ((:module "demon-of-the-fall"
+    ((:module "src"
 	      :components
 	      ((:file "package")
 	       ;; scenario logic
