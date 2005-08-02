@@ -19,6 +19,9 @@
   (fetus:destroy-display))
 
 
+(defvar *camera-follow*)
+
+
 (defun in-game-loop (starting-room)
   "Interactive game-loop on the current display, starting from the
 given ROOM.  Note that the display must already have been created."
@@ -37,10 +40,10 @@ given ROOM.  Note that the display must already have been created."
 	;; spawn the player, have the camera follow it.
 	;; XXX yuck, package moving ugliness.
 	(aif (equinox::room-player-spawn equinox::*current-room*)
-	     (setf equinox:*camera-follow*
+	     (setf *camera-follow*
 		   (equinox:spawn-actor-from-archetype
 		    :peter (equinox::iso-point-from-list it) sprite-manager))
-	     (setf equinox:*camera-follow*
+	     (setf *camera-follow*
 		   (equinox:spawn-actor-from-archetype
 		    :peter (equinox::make-iso-point) sprite-manager)))
 
@@ -52,18 +55,18 @@ given ROOM.  Note that the display must already have been created."
 
 	   ;; XXX: ugly hack.
 	   (multiple-value-bind (room point)
-	       (equinox:check-room-change)
+	       (equinox:check-room-change *camera-follow*)
 	     (when room
 	       (fetus:destroy-sprite-manager sprite-manager)
 	       (setf sprite-manager (fetus:create-sprite-manager
 				     #'equinox:isometric-sprite-cmp))
 	       (equinox:create-actor-manager)
 	       (equinox:load-room room sprite-manager)
-	       (setf equinox::*camera-follow*
+	       (setf *camera-follow*
 		     (equinox:spawn-actor-from-archetype :peter point
 							 sprite-manager))))
 
-	   (update-camera equinox::*camera-follow*)
+	   (equinox:update-camera *camera-follow*)
 	   (equinox:update-all-actors 20)
 	   (equinox:room-redraw)
 	   (fetus:update-all-sprites sprite-manager)
@@ -76,13 +79,3 @@ given ROOM.  Note that the display must already have been created."
 	(format t "~&Frames-per-second: ~D"
 		(float (* 1000 (/ (car fps-count) (- (fetus:timer-get-ticks)
 						     (cdr fps-count))))))))))
-
-
-;; XXX yuck, package moving ugliness.
-(defun update-camera (actor)
-  (multiple-value-bind (x y)
-      (equinox::iso-project-point (equinox::actor-position actor))
-    (decf x (equinox:half (fetus:display-width)))
-    (decf y (equinox:half (fetus:display-height)))
-    (setf (car equinox::*camera*) (- x)
-	  (cdr equinox::*camera*) (- y))))
