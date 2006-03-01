@@ -12,5 +12,6 @@
 	       ;; scenario logic
 	       (:file "maze" :depends-on ("package"))
 	       (:file "osd" :depends-on ("package"))
-	       (:file "main" :depends-on ("package" "osd"))))))
+	       (:file "room" :depends-on ("package"))
+	       (:file "main" :depends-on ("package" "room" "osd"))))))
 
