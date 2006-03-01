@@ -14,7 +14,7 @@
   ())
 
 
-(defclass iso-room (equinox:iso-room)
+(defclass room (equinox:room)
   ((exits)
    (player-spawn)
    (name)))
