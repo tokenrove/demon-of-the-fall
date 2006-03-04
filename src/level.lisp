@@ -7,14 +7,8 @@
    (game-progress)))
 
 (defclass player ()
-  ((lives)
-   (current-character)))
+  ((lives :accessor lives-of)
+   (avatar :accessor avatar-of)))
 
 (defclass trigger ()
   ())
-
-
-(defclass room (equinox:room)
-  ((exits)
-   (player-spawn)
-   (name)))

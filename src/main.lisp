@@ -8,7 +8,7 @@
 
 (defun first-init ()
   "Called when we first start."
-  (fetus:create-display :scale 2)
+  (fetus:create-display :scale 1)
   (fetus:event-init)
   (fetus:font-init)
   (equinox:initialize-actor-data)
@@ -29,9 +29,6 @@ given ROOM.  Note that the display must already have been created."
   (fetus:with-sprite-manager (sprite-manager #'equinox:isometric-sprite-cmp)
     (equinox:create-actor-manager)
     (fetus:wipe-events)
-    ;; XXX yuck, package moving ugliness.
-    (setf equinox:*magic-exit-hack* nil
-	  equinox:*exit-counter* 0)
 
     (let ((fps-count (cons 0 (fetus:timer-get-ticks))))
       (fetus:with-font (font "other-data/spn.ttf" 24)
@@ -39,13 +36,12 @@ given ROOM.  Note that the display must already have been created."
 
 	  ;; spawn the player, have the camera follow it.
 	  ;; XXX yuck, package moving ugliness.
-	  (aif (player-spawn-of room)
-	       (setf *camera-follow*
-		     (equinox:spawn-actor-from-archetype
-		      :peter (equinox::iso-point-from-list it) sprite-manager))
-	       (setf *camera-follow*
-		     (equinox:spawn-actor-from-archetype
-		      :peter (equinox::make-iso-point) sprite-manager)))
+	  (setf *camera-follow*
+		(spawn-actor
+		 :peter (aif (player-spawn-of room)
+			     (equinox::iso-point-from-list it)
+			     (equinox::make-iso-point))
+		 sprite-manager))
 
 	  (loop
 	   (fetus:timer-start-frame 20)
@@ -54,17 +50,16 @@ given ROOM.  Note that the display must already have been created."
 	     (return))
 
 	   ;; XXX: ugly hack.
-	   #+nil(multiple-value-bind (room point)
-	       (equinox:check-room-change *camera-follow*)
-	     (when room
+	   (multiple-value-bind (destination point)
+	       (check-room-change *camera-follow*)
+	     (when destination
 	       (fetus:destroy-sprite-manager sprite-manager)
 	       (setf sprite-manager (fetus:create-sprite-manager
 				     #'equinox:isometric-sprite-cmp))
 	       (equinox:create-actor-manager)
-	       (load-room room sprite-manager)
+	       (setf room (load-room destination sprite-manager))
 	       (setf *camera-follow*
-		     (equinox:spawn-actor-from-archetype :peter point
-							 sprite-manager))))
+		     (spawn-actor :peter point sprite-manager))))
 
 	   (equinox:update-camera *camera-follow*)
 	   (equinox:update-actors room)

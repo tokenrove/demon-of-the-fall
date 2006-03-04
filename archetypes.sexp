@@ -2,7 +2,7 @@
 ;; This is a data file, not a program file.  Don't put routines here.
 ((:peter
   (:sprite
-   (:image "ret-data/petsheet.pcx")
+   (:image "art/common/actors/peter.pcx")
    (:blit-offset (12 . 0))
    (:frames ((0 0 24 48) (24 0 24 48) (48 0 24 48) (72 0 24 48)
 	     (96 0 24 48) (120 0 24 48) (144 0 24 48) (168 0 24 48)
@@ -179,9 +179,9 @@
   (:box
    (0 0 0)
    (64 32 40)))
- #+nil(:iron-key
+ (:iron-key
   (:sprite
-   (:image "ret-data/iron-key.pcx")
+   (:image "art/garden/actors/ironkey.pcx")
    (:blit-offset (16 . 0))
    (:frames ((0 0 32 32)
 	     (32 0 32 32)
@@ -204,12 +204,24 @@
 		   (7 . 2)
 		   (8 . 2)
 		   (9 . 2)
-		   (10 . 2)
-		   (11 . 2))))
-   (:handler
-    create-key-handler)
-   (:contact
-    loot-contact-handler)
-   (:box
-    (0 0 0)
-    (8 8 8)))))
+		   (10 . 2)))))
+  (:handler
+   create-key-handler)
+  (:contact
+   loot-contact-handler)
+  (:box
+   (0 0 0)
+   (8 8 8)))
+ (:iron-gate
+  (:sprite
+   (:image "art/garden/actors/irongate.pcx")
+   (:blit-offset (16 . 0))
+   (:frames ((0 0 32 96)))
+   (:animations ((:default (0 . 60)))))
+  (:handler
+   create-monster-handler)
+  (:contact
+   loot-contact-handler)
+  (:box
+   (0 0 0)
+   (64 96 8))))

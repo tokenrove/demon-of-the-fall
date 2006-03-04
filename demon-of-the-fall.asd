@@ -13,5 +13,6 @@
 	       (:file "maze" :depends-on ("package"))
 	       (:file "osd" :depends-on ("package"))
 	       (:file "room" :depends-on ("package"))
+	       (:file "actor" :depends-on ("package"))
 	       (:file "main" :depends-on ("package" "room" "osd"))))))
 
