@@ -33,7 +33,6 @@ given ROOM.  Note that the display must already have been created."
     (let ((fps-count (cons 0 (fetus:timer-get-ticks))))
       (fetus:with-font (font "other-data/spn.ttf" 24)
 	(let ((room (load-room starting-room sprite-manager)))
-
 	  ;; spawn the player, have the camera follow it.
 	  ;; XXX yuck, package moving ugliness.
 	  (setf *camera-follow*
@@ -61,7 +60,7 @@ given ROOM.  Note that the display must already have been created."
 	       (setf *camera-follow*
 		     (spawn-actor :peter point sprite-manager))))
 
-	   (equinox:update-camera *camera-follow*)
+	   (equinox:update-camera *camera-follow*)	   
 	   (equinox:update-actors room)
 	   (equinox:redraw room)
 	   (fetus:update-all-sprites sprite-manager)

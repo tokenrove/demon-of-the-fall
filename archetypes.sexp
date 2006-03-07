@@ -215,7 +215,7 @@
  (:iron-gate
   (:sprite
    (:image "art/garden/actors/irongate.pcx")
-   (:blit-offset (16 . 0))
+   (:blit-offset (0 . 0))
    (:frames ((0 0 32 96)))
    (:animations ((:default (0 . 60)))))
   (:handler

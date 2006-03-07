@@ -28,8 +28,8 @@
 	     (when (= z (1- (depth-of room)))
 	       (draw-exit exit nil t)))))
 
-;;; XXX this is gross.	
-(defun check-exit (actor room x z)
+;;; XXX this is still kind of gross.
+(defmethod equinox:border-collision ((room room) actor x z)
   (clampf x (1- (width-of room)) 0)
   (clampf z (1- (depth-of room)) 0)
 
