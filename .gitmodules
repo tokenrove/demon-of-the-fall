@@ -1,0 +1,6 @@
+[submodule "game-fetus-alpha"]
+	path = game-fetus-alpha
+	url = git@github.com:tokenrove/game-fetus-alpha.git
+[submodule "aequus-noctis"]
+	path = aequus-noctis
+	url = git@github.com:tokenrove/aequus-noctis.git
