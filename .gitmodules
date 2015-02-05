@@ -4,3 +4,6 @@
 [submodule "aequus-noctis"]
 	path = aequus-noctis
 	url = git@github.com:tokenrove/aequus-noctis.git
+[submodule "cl-sdl-cipht"]
+	path = cl-sdl-cipht
+	url = git@github.com:tokenrove/cl-sdl-cipht
