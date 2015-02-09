@@ -38,7 +38,7 @@ given ROOM.  Note that the display must already have been created."
             (fetus:timer-start-frame 20)
             (fetus:clear-display)
             (fetus:event-update)
-            (when (fetus:event-pressedp fetus:+ev-quit+)
+            (when (fetus:event-pressedp :quit)
               (return))
 
             ;; XXX: ugly hack.

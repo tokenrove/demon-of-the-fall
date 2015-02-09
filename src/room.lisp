@@ -5,6 +5,17 @@
   ((exits :accessor exits-of)
    (player-spawn :accessor player-spawn-of)))
 
+(defclass exit ()
+  ((goes-to)
+   (comes-from))
+  (:documentation "A link between two ROOMs."))
+
+(defclass spawn ()
+  ((archetype)
+   (initial-state)
+   (predicate))
+  (:documentation "A predicated birther of ACTORs."))
+
 (defun load-room (name sprite-manager &key (spawn-actors-p t))
   (let ((room (make-instance 'room)))
     (equinox::load-room-int room name sprite-manager :spawn-actors-p spawn-actors-p)

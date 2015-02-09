@@ -16,3 +16,9 @@
 		#:iso-point-x
 		#:iso-point-y
 		#:iso-point-z))
+
+(in-package :demon-of-the-fall)
+(5am:def-suite unit :description "Fast-running tests")
+(5am:def-suite integration :description "Big or slow non-interactive tests")
+(5am:def-suite acceptance :description "Interactive tests")
+(5am:in-suite unit)
