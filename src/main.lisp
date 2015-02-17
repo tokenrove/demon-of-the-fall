@@ -9,7 +9,7 @@
 (defvar *camera-follow*)
 
 (defmacro with-everything (&body body)
-  `(fetus:with-display (:scale 3)
+  `(fetus:with-display (:scale 2)
      (fetus/os:with-directory-of-system (:demon-of-the-fall)
        (initialize-actor-data)
        (equinox:initialize-room-data)
@@ -29,6 +29,7 @@ given ROOM.  Note that the display must already have been created."
         ;; XXX yuck, package moving ugliness.
         (setf *camera-follow*
               (spawn-actor
+               room
                :peter (aif (player-spawn-of room)
                            (equinox::iso-point-from-list it)
                            (equinox::make-iso-point))))

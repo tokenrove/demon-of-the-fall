@@ -118,7 +118,7 @@ Weapon: PSYCHIC POWERS
         (iso-point-component axis impulse)))
 
 (defmethod notify ((us human) where (what (eql :contact)) &key with axis impulse)
-  (declare (ignore them))
+  (declare (ignore with))
   (decf (iso-point-component axis (velocity-of us))
         (iso-point-component axis impulse)))
 

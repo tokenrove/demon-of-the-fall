@@ -13,13 +13,13 @@
   "The actor archetypes table, which defines the default values for
 many parameters of an actor.")
 
-(defun spawn-actor (name position)
+(defun spawn-actor (room name position)
   ;; XXX package moving ugliness
   (let* ((archetype (or (cdr (find name *actor-archetypes* :key #'car))
-			(error "archetype ~A not found" name)))
-	 (actor (make-instance 'actor :type name)))
-    (initialize-actor-from-archetype actor position archetype)
-    actor))
+                        (error "archetype ~A not found" name))))
+    (aprog1 (make-instance (intern (symbol-name name)))
+      (initialize-actor-from-archetype it position archetype)
+      (equinox:add-actor-to-room room it))))
 
 (defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
   (let ((*read-eval* nil))
@@ -36,14 +36,14 @@ values from *ACTOR-ARCHETYPES*."
          (box (destructuring-bind ((x y z) (w h d))
                   (cdr (assoc :box archetype))
                 (make-box :position (make-iso-point :x x :y y :z z)
-                          :dimensions (make-iso-point :x w :y h :z d))))
-         (actor (make-instance (intern name)
-                               :position position
-                               :sprite (fetus:new-sprite-from-alist
-                                        (cdr (assoc :sprite archetype)))
-                               :box box)))
-    (equinox:add-actor-to-room room actor)
-    actor))
+                          :dimensions (make-iso-point :x w :y h :z d)))))
+    (aprog1
+        (make-instance (intern (symbol-name name))
+                       :position position
+                       :sprite (fetus:new-sprite-from-alist
+                                (cdr (assoc :sprite archetype)))
+                       :box box)
+      (equinox:add-actor-to-room room it))))
 
 (defun initialize-actor-from-archetype (actor position archetype)
   (let* ((box (destructuring-bind ((x y z) (w h d))
