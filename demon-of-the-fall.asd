@@ -14,6 +14,7 @@
     :components
     ((:file "package")
      (:file "actor" :depends-on ("package"))
+     (:file "actor-handlers" :depends-on ("actor"))
      (:file "maze" :depends-on ("package"))
      (:file "osd" :depends-on ("package"))
      (:file "cue" :depends-on ("package"))

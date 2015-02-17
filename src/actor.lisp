@@ -1,45 +1,57 @@
-
 (in-package :demon-of-the-fall)
 
-(defclass actor (equinox::actor)
+(defclass actor (equinox:actor)
   ((exit-counter :accessor exit-counter-of :initform 0)
    (last-exit-taken :accessor last-exit-taken-by :initform nil)
    (health)
    (inventory)
-   (keys)))
+   (keys))
+  (:documentation
+   "DEMON:ACTOR extends EQUINOX:ACTOR to add spawn information."))
 
-(defun spawn-actor (name position sprite-manager)
+(defvar *actor-archetypes* nil
+  "The actor archetypes table, which defines the default values for
+many parameters of an actor.")
+
+(defun spawn-actor (name position)
   ;; XXX package moving ugliness
-  (let* ((archetype (or (cdr (find name equinox::*actor-archetypes* :key #'car))
+  (let* ((archetype (or (cdr (find name *actor-archetypes* :key #'car))
 			(error "archetype ~A not found" name)))
 	 (actor (make-instance 'actor :type name)))
-    (equinox::initialize-actor-from-archetype actor position sprite-manager
-					      archetype)
+    (initialize-actor-from-archetype actor position archetype)
     actor))
 
+(defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
+  (let ((*read-eval* nil))
+    (with-open-file (stream archetypes-file)
+      (setf *actor-archetypes* (read stream)))))
 
-;;; make apple handler
-;;; if actor has health, add to it, and destroy ourselves.
+(defun spawn-actor-from-archetype (room name position)
+  "function SPAWN-ACTOR-FROM-ARCHETYPE room name position => actor
 
-(defun make-gate-handler ()
-  (let ((state 'closed))
-    (lambda (id actor)
-      ;; state closed, do nothing
-      ;; state rising, rise til we reach the open height
-      ;; state open, just fight against gravity
+Creates (and returns) a new ACTOR instance, reading default member
+values from *ACTOR-ARCHETYPES*."
+  (let* ((archetype (or (cdr (find name *actor-archetypes* :key #'car))
+                        (error "archetype ~A not found" name)))
+         (box (destructuring-bind ((x y z) (w h d))
+                  (cdr (assoc :box archetype))
+                (make-box :position (make-iso-point :x x :y y :z z)
+                          :dimensions (make-iso-point :x w :y h :z d))))
+         (actor (make-instance (intern name)
+                               :position position
+                               :sprite (fetus:new-sprite-from-alist
+                                        (cdr (assoc :sprite archetype)))
+                               :box box)))
+    (equinox:add-actor-to-room room actor)
+    actor))
 
-      ;; when state open, move up til we reach opened-height
-      (when (and (eql state 'open) (iso-point-y (position-of actor)))
-	(apply-impulse :y -0.3))	;XXX gate speed constant
-      (warn "Doesn't do anything yet."))))
-
-;;; key-based gate collision:
-;;; if the actor has a key in their possession,
-;;;     spend it, and open us.
-(defun make-keyed-gate-collision-handler (key)
-  (lambda (id actor)
-    ;; set state
-    ))
-
-;;; trigger-based gate collision
-(defun make-gate-trigger (trigger))
+(defun initialize-actor-from-archetype (actor position archetype)
+  (let* ((box (destructuring-bind ((x y z) (w h d))
+                  (cdr (assoc :box archetype))
+                (make-box :position (make-iso-point :x x :y y :z z)
+                          :dimensions (make-iso-point :x w :y h :z d)))))
+    (setf (position-of actor) position
+          (sprite-of actor) (fetus:new-sprite-from-alist
+                             (cdr (assoc :sprite archetype)))
+          (box-of actor) box)
+    actor))

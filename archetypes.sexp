@@ -1,6 +1,7 @@
 ;; -*- Lisp -*-
 ;; This is a data file, not a program file.  Don't put routines here.
 ((:peter
+  (:type peter)
   (:sprite
    (:image "art/common/actors/peter.pcx")
    (:blit-offset (12 . 0))
@@ -42,12 +43,9 @@
 		 (:jump-south (14 . 60)))))
   (:box
    (0 0 0)
-   (24 36 24))
-  (:handler
-   equinox:create-human-input-handler)
-  (:contact
-   equinox:player-contact-handler))
+   (24 36 24)))
  (:evil-peter
+  (:type enemy)
   (:sprite
    (:image "ret-data/evilpete.pcx")
    (:blit-offset (12 . 0))
@@ -109,21 +107,13 @@
 		 (:jump-south (14 . 60)))))
   (:box
    (0 0 0)
-   (24 36 24))
-  (:handler
-   equinox:create-monster-handler)
-  (:contact
-   equinox:monster-contact-handler))
+   (24 36 24)))
  (:apple
   (:sprite
    (:image "other-data/apple.pcx")
    (:blit-offset (0 . 0))
    (:frames ((0 0 16 16)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   equinox:create-do-nothing-handler)
-  (:contact
-   equinox:loot-contact-handler)
   (:box
    (0 0 0)
    (8 8 8)))
@@ -133,10 +123,6 @@
    (:blit-offset (0 . 0))
    (:frames ((0 0 16 16)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   equinox:create-do-nothing-handler)
-  (:contact
-   equinox:loot-contact-handler)
   (:box
    (0 0 0)
    (8 8 8)))
@@ -146,10 +132,6 @@
    (:blit-offset (32 . 0))
    (:frames ((0 0 64 64)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   equinox:create-do-nothing-handler)
-  (:contact
-   equinox:pushable-block-handler)
   (:box
    (0 0 0)
    (64 32 64)))
@@ -159,10 +141,6 @@
    (:blit-offset (32 . 0))
    (:frames ((0 0 64 64)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   equinox:create-floating-block-handler)
-  (:contact
-   equinox:pushable-block-handler)
   (:box
    (0 0 0)
    (64 32 64)))
@@ -172,10 +150,6 @@
    (:blit-offset (32 . 0))
    (:frames ((0 0 64 40)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   equinox:create-floating-block-handler)
-  (:contact
-   equinox:pushable-block-handler)
   (:box
    (0 0 0)
    (64 32 40)))
@@ -205,10 +179,6 @@
 		   (8 . 2)
 		   (9 . 2)
 		   (10 . 2)))))
-  (:handler
-   create-key-handler)
-  (:contact
-   loot-contact-handler)
   (:box
    (0 0 0)
    (8 8 8)))
@@ -218,10 +188,6 @@
    (:blit-offset (0 . 0))
    (:frames ((0 0 32 96)))
    (:animations ((:default (0 . 60)))))
-  (:handler
-   create-monster-handler)
-  (:contact
-   loot-contact-handler)
   (:box
    (0 0 0)
    (64 96 8))))

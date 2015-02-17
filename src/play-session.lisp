@@ -1,9 +1,9 @@
 (in-package :demon-of-the-fall)
 
 (defclass play-session ()
-  ((scenario)
+  ((scenario :accessor scenario-of :initarg :scenario)
 
-   (current-room)
+   (current-room :accessor current-room-of :initarg :current-room)
    (visited-rooms)
    (visited-exits)
    (cues-triggered)

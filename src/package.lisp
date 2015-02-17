@@ -4,18 +4,30 @@
   (:use :cl :anaphora)
   (:shadow #:room)
   (:import-from :equinox
-		#:width-of
+                #:paint
+                #:update
+                #:notify
+                #:width-of
 		#:depth-of
 		#:archetype-of
 		#:+tile-size+
-		#:position-of
+                #:position-of
+                #:velocity-of
+                #:contact-surface-of
+                #:apply-impulse
 		#:sinkf
 		#:clampf
 		#:half
-		#:iso-project-point
+                #:iso-project-point
+                #:make-iso-point
 		#:iso-point-x
 		#:iso-point-y
-		#:iso-point-z))
+                #:iso-point-z
+                #:iso-point-component
+                #:make-box
+                #:box-of
+                #:sprite-of
+                #:facing-of))
 
 (in-package :demon-of-the-fall)
 (5am:def-suite unit :description "Fast-running tests")
