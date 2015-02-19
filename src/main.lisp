@@ -12,7 +12,6 @@
   `(fetus:with-display (:scale 2)
      (fetus/os:with-directory-of-system (:demon-of-the-fall)
        (initialize-actor-data)
-       (equinox:initialize-room-data)
        ,@body)))
 
 (defun in-game-loop (play-session)
