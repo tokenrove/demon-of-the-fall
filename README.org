@@ -1,0 +1,11 @@
+
+* DEMON OF THE FALL
+
+This was intended to be my [[http://onegameamonth.com][#1GAM]] game for February, but this game will
+have to wait a little longer.  It was originally written, in 2004, as
+a Solstice/Equinox clone, with some influence from Head-Over-Heels.
+I've recently tried to bring it back to life, but much more work will
+be required to extract it from the bad decisions of the past.
+
+
+Copyright 2004 Julian Squires and Matthew Riche
